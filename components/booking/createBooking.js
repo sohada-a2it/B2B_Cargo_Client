@@ -1,25 +1,37 @@
 // app/create-booking/page.js
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-toastify';
-import { createBooking } from '@/Api/booking'; 
+import { createBooking } from '@/Api/booking';
 
-// ✅ location.js থেকে ফাংশন ইম্পোর্ট করুন
-import { getStates, fetchCitiesByState, getPostalCodes } from '@/Api/location';
+// Location functions
+import { getStates, fetchCitiesByState } from '@/Api/location';
 
 // Icons
 import {
   Package, MapPin, Calendar, Weight, Box, FileText, ArrowLeft,
   Plus, Trash2, Send, AlertCircle, CheckCircle, ChevronRight,
-  ChevronLeft, Truck, Ship, Plane, Phone, Mail, 
-  DollarSign, Edit3, Building, Home, Clock,
-  Globe, Hash, Tag, Briefcase, Loader2, X, 
-  User, Save, Info, Ruler, Users, UserPlus, Search,
-  CreditCard, Wallet, Repeat, Anchor, Train, DoorOpen
+  ChevronLeft, Truck, Ship, Plane, Phone, Mail,
+  Building, Clock, Globe, Hash, Tag, Briefcase, Loader2, X,
+  User, Save, Info, Ruler, UserPlus, Search,
+  CreditCard, Wallet, Repeat, TruckIcon, DollarSign
 } from 'lucide-react';
+
+// ==================== CURRENCY CONSTANTS ====================
+const CURRENCY_BY_COUNTRY = {
+    'USA': 'USD',
+    'UK': 'GBP',
+    'Canada': 'CAD'
+};
+
+const CURRENCY_SYMBOLS = {
+    'USD': '$',
+    'GBP': '£',
+    'CAD': 'C$'
+};
 
 // ==================== CONSTANTS ====================
 
@@ -83,7 +95,7 @@ const PRODUCT_CATEGORIES = [
   'Automotive', 'Pharmaceuticals', 'Food', 'Documents', 'Tires', 'Chemicals', 'Others'
 ];
 
-const CURRENCIES = ['USD', 'GBP', 'CAD', 'THB', 'CNY', 'EUR', 'BDT'];
+const CURRENCIES = ['USD', 'GBP', 'CAD'];
 
 const PACKAGING_TYPES = [
   { value: 'pallet', label: 'Pallet' },
@@ -141,6 +153,9 @@ const Button = ({ children, type = 'button', variant = 'primary', size = 'md', i
 };
 
 const Input = ({ label, type = 'text', name, value, onChange, onBlur, placeholder, error, required = false, disabled = false, icon: Icon, className = '', ...props }) => {
+  const [touched, setTouched] = useState(false);
+  const showError = (touched || error) && error;
+  
   return (
     <div className="mb-3">
       {label && (
@@ -161,13 +176,13 @@ const Input = ({ label, type = 'text', name, value, onChange, onBlur, placeholde
           name={name}
           value={value || ''}
           onChange={onChange}
-          onBlur={onBlur}
+          onBlur={(e) => { setTouched(true); onBlur?.(e); }}
           placeholder={placeholder}
           disabled={disabled}
           className={`
             w-full px-3 py-2 text-sm border rounded-md shadow-sm
             focus:outline-none focus:ring-1 focus:ring-[#2563eb] focus:border-[#2563eb]
-            ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'}
+            ${showError ? 'border-red-300 bg-red-50' : 'border-gray-300'}
             ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}
             ${Icon ? 'pl-8' : ''}
             ${className}
@@ -175,12 +190,15 @@ const Input = ({ label, type = 'text', name, value, onChange, onBlur, placeholde
           {...props}
         />
       </div>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {showError && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 };
 
 const Select = ({ label, name, value, onChange, options, error, required = false, icon: Icon, placeholder = 'Select...', disabled = false, loading = false }) => {
+  const [touched, setTouched] = useState(false);
+  const showError = (touched || error) && error;
+  
   return (
     <div className="mb-3">
       {label && (
@@ -200,11 +218,12 @@ const Select = ({ label, name, value, onChange, options, error, required = false
           name={name}
           value={value || ''}
           onChange={onChange}
+          onBlur={() => setTouched(true)}
           disabled={disabled || loading}
           className={`
             w-full px-3 py-2 text-sm border rounded-md shadow-sm appearance-none
             focus:outline-none focus:ring-1 focus:ring-[#2563eb] focus:border-[#2563eb]
-            ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'}
+            ${showError ? 'border-red-300 bg-red-50' : 'border-gray-300'}
             ${Icon ? 'pl-8' : ''}
             ${disabled || loading ? 'bg-gray-100 cursor-not-allowed' : ''}
           `}
@@ -227,12 +246,15 @@ const Select = ({ label, name, value, onChange, options, error, required = false
           <ChevronRight className="h-3.5 w-3.5 text-gray-400 transform rotate-90" />
         </div>
       </div>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {showError && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 };
 
 const TextArea = ({ label, name, value, onChange, placeholder, error, required = false, rows = 3 }) => {
+  const [touched, setTouched] = useState(false);
+  const showError = (touched || error) && error;
+  
   return (
     <div className="mb-3">
       {label && (
@@ -246,15 +268,16 @@ const TextArea = ({ label, name, value, onChange, placeholder, error, required =
         name={name}
         value={value || ''}
         onChange={onChange}
+        onBlur={() => setTouched(true)}
         placeholder={placeholder}
         rows={rows}
         className={`
           w-full px-3 py-2 text-sm border rounded-md shadow-sm
           focus:outline-none focus:ring-1 focus:ring-[#2563eb] focus:border-[#2563eb]
-          ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'}
+          ${showError ? 'border-red-300 bg-red-50' : 'border-gray-300'}
         `}
       />
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {showError && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 };
@@ -279,87 +302,6 @@ const StepIndicator = ({ step, currentStep, title }) => {
   );
 };
 
-const CustomerSearchModal = ({ isOpen, onClose, onSelect, customers, loading }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  if (!isOpen) return null;
-  
-  const filteredCustomers = customers.filter(customer => 
-    customer.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone?.includes(searchTerm)
-  );
-  
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-4 max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-sm font-medium text-gray-900">Select Customer</h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X className="h-4 w-4 text-gray-500" />
-          </button>
-        </div>
-        
-        <div className="relative mb-3">
-          <Search className="absolute left-2 top-2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name, email, company, phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 text-sm border rounded-md"
-          />
-        </div>
-        
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {loading ? (
-            <div className="text-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
-            </div>
-          ) : filteredCustomers.length > 0 ? (
-            filteredCustomers.map(customer => (
-              <div
-                key={customer._id}
-                onClick={() => {
-                  onSelect(customer);
-                  onClose();
-                }}
-                className="p-3 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {customer.firstName} {customer.lastName}
-                      {customer.companyName && (
-                        <span className="ml-2 text-xs text-gray-500">({customer.companyName})</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      <span className="inline-flex items-center mr-3">
-                        <Mail className="h-3 w-3 mr-1" /> {customer.email}
-                      </span>
-                      <span className="inline-flex items-center">
-                        <Phone className="h-3 w-3 mr-1" /> {customer.phone || 'N/A'}
-                      </span>
-                    </p>
-                  </div>
-                  <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                    {customer.customerStatus || 'Active'}
-                  </span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-sm text-gray-500 py-4">No customers found</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ==================== MAIN COMPONENT ====================
 export default function CreateBooking() {
   const router = useRouter();
@@ -367,18 +309,16 @@ export default function CreateBooking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [serverErrors, setServerErrors] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [customers, setCustomers] = useState([]);
-  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
-  const [adminUser, setAdminUser] = useState(null);
   const [availableSubTypes, setAvailableSubTypes] = useState([]);
+  const [isReviewConfirmed, setIsReviewConfirmed] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [pickupRequired, setPickupRequired] = useState(false);
   
   // Location States
   const [cities, setCities] = useState([]);
   const [states, setStates] = useState([]);
   const [loadingLocation, setLoadingLocation] = useState(false);
-  const [postalCodes, setPostalCodes] = useState([]);
 
   // ===== Form Data State with Default Values =====
   const [formData, setFormData] = useState({
@@ -425,7 +365,6 @@ export default function CreateBooking() {
       referenceNumber: ''
     },
  
-    
     payment: {
       mode: 'bank_transfer',
       currency: 'USD',
@@ -480,95 +419,317 @@ export default function CreateBooking() {
   });
 
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
-  // ===== Location Functions (NO FETCH, সরাসরি ইম্পোর্ট করা ফাংশন) =====
-
-  // রাজ্য লোড করার ফাংশন - সরাসরি ইম্পোর্ট করা ফাংশন কল
- // ===== Location Functions (সঠিক ভার্সন) =====
-
-// এই ফাংশনগুলো আপডেট করুন
-
-const loadStates = (country) => {
-  if (!country) return;
-  
-  setLoadingLocation(true);
-  try {
-    console.log('🌍 Loading states for:', country);
-    const statesData = getStates(country);
-    
-    console.log('📦 States data received:', statesData);
-    
-    if (statesData && statesData.length > 0) {
-      // শুধু নামগুলো নিন
-      const stateNames = statesData.map(s => s.name);
-      setStates(stateNames);
-      console.log(`✅ Loaded ${stateNames.length} states:`, stateNames);
-      
-      // UK-এর জন্য বিশেষ নোটিফিকেশন
-      if (country === 'UK') {
-        toast.info(`UK states loaded: ${stateNames.join(', ')}`);
+  // ==================== LOAD LOGGED IN USER DATA ====================
+  useEffect(() => {
+    const loadUserData = async () => {
+      setIsLoadingUser(true);
+      try {
+        let userStr = localStorage.getItem('user');
+        
+        if (!userStr) {
+          userStr = sessionStorage.getItem('user');
+        }
+        
+        if (!userStr) {
+          const cookies = document.cookie.split(';');
+          for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'user') {
+              userStr = decodeURIComponent(value);
+              break;
+            }
+          }
+        }
+        
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            console.log('✅ User data loaded:', user);
+            setLoggedInUser(user);
+            
+            setFormData(prev => ({
+              ...prev,
+              customer: user._id,
+              sender: {
+                ...prev.sender,
+                name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || '',
+                companyName: user.companyName || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                address: {
+                  ...prev.sender.address,
+                  addressLine1: user.address?.addressLine1 || user.companyAddress || '',
+                  addressLine2: user.address?.addressLine2 || '',
+                  city: user.address?.city || user.city || '',
+                  state: user.address?.state || user.state || '',
+                  country: user.address?.country || user.country || '',
+                  postalCode: user.address?.postalCode || user.postalCode || ''
+                }
+              }
+            }));
+            
+            toast.success(`Welcome ${user.firstName || user.name || 'User'}!`);
+          } catch (parseError) {
+            console.error('Error parsing user data:', parseError);
+            toast.error('Error loading user data. Please login again.');
+            router.push('/auth/login');
+          }
+        } else {
+          console.log('⚠️ No user found in storage');
+          toast.warning('Please login to create a booking');
+          router.push('/auth/login');
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        toast.error('Failed to load user data');
+        router.push('/auth/login');
+      } finally {
+        setIsLoadingUser(false);
       }
-    } else {
-      console.warn('⚠️ No states found for', country);
+    };
+    
+    loadUserData();
+  }, [router]);
+
+  // ==================== REAL-TIME VALIDATION FUNCTIONS ====================
+  
+  const validateField = useCallback((name, value) => {
+    let error = '';
+    
+    if (name === 'shipmentClassification.mainType') {
+      if (!value) error = 'Shipment type is required';
+    } else if (name === 'shipmentClassification.subType') {
+      if (!value) error = 'Shipment sub-type is required';
+    } else if (name === 'payment.mode') {
+      if (!value) error = 'Payment mode is required';
+    }
+    
+    else if (name.includes('packageDetails')) {
+      const match = name.match(/packageDetails\[(\d+)\]\.(.+)/);
+      if (match) {
+        const [, index, field] = match;
+        if (field === 'description' && !value) {
+          error = 'Description is required';
+        } else if (field === 'quantity' && (!value || value < 1)) {
+          error = 'Minimum 1 item required';
+        } else if (field === 'weight' && (!value || value <= 0)) {
+          error = 'Weight is required';
+        }
+      }
+    }
+    
+    else if (name === 'sender.name') {
+      if (!value) error = 'Sender name is required';
+    } else if (name === 'sender.email') {
+      if (!value) error = 'Sender email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
+    } else if (name === 'sender.phone') {
+      if (!value) error = 'Sender phone is required';
+    }
+    
+    else if (name === 'receiver.name') {
+      if (!value) error = 'Receiver name is required';
+    } else if (name === 'receiver.email') {
+      if (!value) error = 'Receiver email is required';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
+    } else if (name === 'receiver.phone') {
+      if (!value) error = 'Receiver phone is required';
+    } else if (name === 'receiver.address.addressLine1') {
+      if (!value) error = 'Receiver address is required';
+    } else if (name === 'receiver.address.city') {
+      if (!value) error = 'City is required';
+    } else if (name === 'receiver.address.country') {
+      if (!value) error = 'Country is required';
+    } else if (name === 'receiver.address.state') {
+      if (!value) error = 'State is required';
+    }
+    
+    else if (name === 'sender.pickupDate' && pickupRequired) {
+      if (!value) error = 'Pickup date is required';
+    }
+    
+    return error;
+  }, [pickupRequired]);
+
+  const validateOnChange = useCallback((name, value) => {
+    const error = validateField(name, value);
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return !error;
+  }, [validateField]);
+
+  const validateStep = useCallback((step) => {
+    const newErrors = {};
+    let isValid = true;
+    
+    if (step === 1) {
+      if (!formData.shipmentClassification.mainType) {
+        newErrors['shipmentClassification.mainType'] = 'Shipment type is required';
+        isValid = false;
+      }
+      if (!formData.shipmentClassification.subType) {
+        newErrors['shipmentClassification.subType'] = 'Shipment sub-type is required';
+        isValid = false;
+      }
+      if (!formData.payment.mode) {
+        newErrors['payment.mode'] = 'Payment mode is required';
+        isValid = false;
+      }
+    }
+    
+    else if (step === 2) {
+      formData.shipmentDetails.packageDetails.forEach((item, index) => {
+        if (!item.description) {
+          newErrors[`package_desc_${index}`] = 'Description is required';
+          isValid = false;
+        }
+        if (!item.quantity || item.quantity < 1) {
+          newErrors[`package_qty_${index}`] = 'Minimum 1 item required';
+          isValid = false;
+        }
+        if (!item.weight || item.weight <= 0) {
+          newErrors[`package_weight_${index}`] = 'Weight is required';
+          isValid = false;
+        }
+      });
+    }
+    
+    else if (step === 3) {
+      if (!formData.sender.name) {
+        newErrors['sender.name'] = 'Sender name is required';
+        isValid = false;
+      }
+      if (!formData.sender.email) {
+        newErrors['sender.email'] = 'Sender email is required';
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.sender.email)) {
+        newErrors['sender.email'] = 'Invalid email format';
+        isValid = false;
+      }
+      if (!formData.sender.phone) {
+        newErrors['sender.phone'] = 'Sender phone is required';
+        isValid = false;
+      }
+      if (!formData.receiver.name) {
+        newErrors['receiver.name'] = 'Receiver name is required';
+        isValid = false;
+      }
+      if (!formData.receiver.email) {
+        newErrors['receiver.email'] = 'Receiver email is required';
+        isValid = false;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.receiver.email)) {
+        newErrors['receiver.email'] = 'Invalid email format';
+        isValid = false;
+      }
+      if (!formData.receiver.phone) {
+        newErrors['receiver.phone'] = 'Receiver phone is required';
+        isValid = false;
+      }
+      if (!formData.receiver.address.addressLine1) {
+        newErrors['receiver.address.addressLine1'] = 'Receiver address is required';
+        isValid = false;
+      }
+      if (!formData.receiver.address.city) {
+        newErrors['receiver.address.city'] = 'City is required';
+        isValid = false;
+      }
+      if (!formData.receiver.address.country) {
+        newErrors['receiver.address.country'] = 'Country is required';
+        isValid = false;
+      }
+      if (!formData.receiver.address.state) {
+        newErrors['receiver.address.state'] = 'State is required';
+        isValid = false;
+      }
+      
+      if (pickupRequired && !formData.sender.pickupDate) {
+        newErrors['sender.pickupDate'] = 'Pickup date is required';
+        isValid = false;
+      }
+    }
+    
+    setErrors(prev => ({ ...prev, ...newErrors }));
+    return isValid;
+  }, [formData, pickupRequired]);
+
+  // ==================== LOCATION FUNCTIONS ====================
+  
+  const loadStates = useCallback((country) => {
+    if (!country) return;
+    
+    setLoadingLocation(true);
+    try {
+      const statesData = getStates(country);
+      if (statesData && statesData.length > 0) {
+        const stateNames = statesData.map(s => s.name);
+        setStates(stateNames);
+      } else {
+        setStates([]);
+      }
+    } catch (error) {
+      console.error('Error loading states:', error);
       setStates([]);
-      toast.warning(`No states found for ${country}`);
+    } finally {
+      setLoadingLocation(false);
     }
-  } catch (error) {
-    console.error('❌ Error loading states:', error);
-    toast.error('Error loading states');
-  } finally {
-    setLoadingLocation(false);
-  }
-};
+  }, []);
 
-const loadCities = (country, state) => {
-  if (!country || !state) return;
-  
-  setLoadingLocation(true);
-  try {
-    console.log('🌍 Loading cities for:', { country, state });
-    const citiesData = fetchCitiesByState(country, state);
+  const loadCities = useCallback((country, state) => {
+    if (!country || !state) return;
     
-    console.log('📦 Cities data received:', citiesData);
-    
-    if (citiesData && citiesData.length > 0) {
-      const cityNames = citiesData.map(c => c.name);
-      setCities(cityNames);
-      console.log(`✅ Loaded ${cityNames.length} cities:`, cityNames.slice(0, 5));
-      
-      // UK-এর জন্য সিটি দেখালে Toast
-      if (country === 'UK') {
-        toast.success(`Found ${cityNames.length} cities in ${state}`);
+    setLoadingLocation(true);
+    try {
+      const citiesData = fetchCitiesByState(country, state);
+      if (citiesData && citiesData.length > 0) {
+        const cityNames = citiesData.map(c => c.name);
+        setCities(cityNames);
+      } else {
+        setCities([]);
       }
-    } else {
-      console.warn('⚠️ No cities found for', state);
+    } catch (error) {
+      console.error('Error loading cities:', error);
       setCities([]);
-      toast.warning(`No cities found for ${state}`);
+    } finally {
+      setLoadingLocation(false);
     }
-  } catch (error) {
-    console.error('❌ Error loading cities:', error);
-    toast.error('Error loading cities');
-  } finally {
-    setLoadingLocation(false);
-  }
-}; 
+  }, []);
 
-  // ===== Destination Change Handler
+  // ==================== HANDLERS ====================
+  
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const finalValue = type === 'checkbox' ? checked : value;
+    
+    setFormData(prev => {
+      const keys = name.split('.');
+      const newFormData = JSON.parse(JSON.stringify(prev));
+      let current = newFormData;
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) current[keys[i]] = {};
+        current = current[keys[i]];
+      }
+      current[keys[keys.length - 1]] = finalValue;
+      return newFormData;
+    });
+    
+    validateOnChange(name, finalValue);
+    setTouched(prev => ({ ...prev, [name]: true }));
+  };
+
+  // Updated Destination Change Handler with Currency
   const handleDestinationChange = (e) => {
     const { value } = e.target;
-    
     handleInputChange(e);
     
     if (value) {
-      // Reset states and cities
       setStates([]);
       setCities([]);
-      setPostalCodes([]);
-      
-      // Load states for selected country - সরাসরি কল (async নেই)
       loadStates(value);
       
-      // Update receiver country
+      // Get currency for selected country
+      const currencyCode = CURRENCY_BY_COUNTRY[value] || 'USD';
+      
       setFormData(prev => ({
         ...prev,
         receiver: {
@@ -580,24 +741,27 @@ const loadCities = (country, state) => {
             state: '',
             postalCode: ''
           }
+        },
+        payment: {
+          ...prev.payment,
+          currency: currencyCode
+        },
+        shipmentDetails: {
+          ...prev.shipmentDetails,
+          destination: value
         }
       }));
       
-      toast.success(`${value} selected - Please select state in Step 3`);
+      toast.success(`${value} selected - Currency: ${currencyCode} (${CURRENCY_SYMBOLS[currencyCode]})`);
     }
   };
 
-  // State Change Handler
   const handleStateChange = (e) => {
     const { value } = e.target;
-    
     handleInputChange(e);
     
     if (value && formData.receiver.address.country) {
-      // Reset cities and postal codes
-      setCities([]); 
-      
-      // Load cities for selected state - সরাসরি কল (async নেই)
+      setCities([]);
       loadCities(formData.receiver.address.country, value);
       
       setFormData(prev => ({
@@ -615,106 +779,88 @@ const loadCities = (country, state) => {
     }
   };
 
-  // City Change Handler
   const handleCityChange = (e) => {
     const { value } = e.target;
-    
     handleInputChange(e);
     
-    if (value && formData.receiver.address.country) {
-      // Load postal codes for selected city 
+    setFormData(prev => ({
+      ...prev,
+      receiver: {
+        ...prev.receiver,
+        address: {
+          ...prev.receiver.address,
+          city: value
+        }
+      }
+    }));
+  };
+
+  const handlePackageChange = (index, field, value) => {
+    setFormData(prev => {
+      const newData = JSON.parse(JSON.stringify(prev));
       
+      if (field.includes('.')) {
+        const [parent, child] = field.split('.');
+        if (!newData.shipmentDetails.packageDetails[index][parent]) {
+          newData.shipmentDetails.packageDetails[index][parent] = {};
+        }
+        newData.shipmentDetails.packageDetails[index][parent][child] = value;
+      } else {
+        newData.shipmentDetails.packageDetails[index][field] = value;
+      }
+      
+      const item = newData.shipmentDetails.packageDetails[index];
+      if (item.dimensions.length && item.dimensions.width && item.dimensions.height) {
+        const volume = (item.dimensions.length * item.dimensions.width * item.dimensions.height) / 1000000;
+        newData.shipmentDetails.packageDetails[index].volume = parseFloat(volume.toFixed(3));
+      }
+      
+      return newData;
+    });
+    
+    const errorKey = `package_${field}_${index}`;
+    let error = '';
+    if (field === 'description' && !value) error = 'Description is required';
+    if (field === 'quantity' && (!value || value < 1)) error = 'Minimum 1 item required';
+    if (field === 'weight' && (!value || value <= 0)) error = 'Weight is required';
+    
+    setErrors(prev => ({ ...prev, [errorKey]: error }));
+  };
+
+  const addPackageItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      shipmentDetails: {
+        ...prev.shipmentDetails,
+        packageDetails: [
+          ...prev.shipmentDetails.packageDetails,
+          {
+            description: '',
+            packagingType: 'carton',
+            quantity: 1,
+            weight: 0,
+            volume: 0,
+            dimensions: { length: 0, width: 0, height: 0, unit: 'cm' },
+            productCategory: '',
+            hsCode: '',
+            value: { amount: 0, currency: formData.payment.currency || 'USD' },
+            hazardous: false,
+            temperatureControlled: { required: false, minTemp: null, maxTemp: null }
+          }
+        ]
+      }
+    }));
+  };
+
+  const removePackageItem = (index) => {
+    if (formData.shipmentDetails.packageDetails.length > 1) {
       setFormData(prev => ({
         ...prev,
-        receiver: {
-          ...prev.receiver,
-          address: {
-            ...prev.receiver.address,
-            city: value,
-            postalCode: ''
-          }
+        shipmentDetails: {
+          ...prev.shipmentDetails,
+          packageDetails: prev.shipmentDetails.packageDetails.filter((_, i) => i !== index)
         }
       }));
-    }
-  };
-// লোকেশন ডিবাগ করার জন্য useEffect
-useEffect(() => {
-  if (formData.receiver.address.country === 'UK') {
-    console.log('🇬🇧 UK Selected - Testing location data');
-    
-    // সরাসরি প্যাকেজ থেকে টেস্ট
-    import('country-state-city').then(({ State, City }) => {
-      const states = State.getStatesOfCountry('GB');
-      console.log('Direct API - UK States:', states.map(s => s.name));
-      
-      if (states.length > 0) {
-        const england = states.find(s => s.name === 'England');
-        if (england) {
-          const cities = City.getCitiesOfState('GB', england.isoCode);
-          console.log('Direct API - England cities:', cities.length);
-        }
-      }
-    });
-  }
-}, [formData.receiver.address.country]);
-  // Update sub types when main type changes
-  useEffect(() => {
-    if (formData.shipmentClassification.mainType) {
-      setAvailableSubTypes(SHIPMENT_SUB_TYPES[formData.shipmentClassification.mainType] || []);
-    }
-  }, [formData.shipmentClassification.mainType]);
- 
-// লোকেশন ডিবাগ করার জন্য
-useEffect(() => {
-  console.log('📍 Location State Updated:', {
-    country: formData.receiver.address.country,
-    state: formData.receiver.address.state,
-    availableStates: states,
-    availableCities: cities,
-    loading: loadingLocation
-  });
-}, [formData.receiver.address.country, formData.receiver.address.state, states, cities, loadingLocation]);
-
-// UK সিলেক্ট করলে টেস্ট
-useEffect(() => {
-  if (formData.receiver.address.country === 'UK') {
-    console.log('🇬🇧 UK Selected - Testing with fallback data');
-    
-    // ফallback ডাটা টেস্ট
-    const testCities = fetchCitiesByState('UK', 'England');
-    console.log('Test cities for England:', testCities);
-  }
-}, [formData.receiver.address.country]);
-  // Debug useEffect
-  useEffect(() => {
-    console.log('📍 Step 3 - Cities state:', cities);
-    console.log('📍 Step 3 - States state:', states); 
-    console.log('📍 Step 3 - Selected country:', formData.receiver.address.country);
-    console.log('📍 Step 3 - Selected state:', formData.receiver.address.state);
-    console.log('📍 Step 3 - Selected city:', formData.receiver.address.city);
-    console.log('📍 Step 3 - Loading:', loadingLocation);
-  }, [cities, states, postalCodes, formData.receiver.address.country, formData.receiver.address.state, formData.receiver.address.city, loadingLocation]);
-
-  // Load customers from API
-  const loadCustomers = async () => {
-    setLoadingCustomers(true);
-    try {
-      const response = await getAllUsers({ 
-        role: 'customer',
-        status: 'active',
-        limit: 100 
-      });
-      
-      if (response.success) {
-        setCustomers(response.data);
-      } else {
-        setCustomers([]);
-      }
-    } catch (error) {
-      console.error('Error loading customers:', error);
-      setCustomers([]);
-    } finally {
-      setLoadingCustomers(false);
     }
   };
 
@@ -737,349 +883,364 @@ useEffect(() => {
     }
   }, [formData.shipmentDetails.packageDetails]);
 
-  // Handle Input Change
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    console.log('🔄 Input Changed:', { name, value, type });
-    
-    setFormData(prev => {
-      const keys = name.split('.');
-      const newFormData = JSON.parse(JSON.stringify(prev));
-      
-      let current = newFormData;
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) current[keys[i]] = {};
-        current = current[keys[i]];
-      }
-      
-      current[keys[keys.length - 1]] = type === 'checkbox' ? checked : value; 
-      
-      return newFormData;
-    });
-
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+  // Update sub types when main type changes
+  useEffect(() => {
+    if (formData.shipmentClassification.mainType) {
+      setAvailableSubTypes(SHIPMENT_SUB_TYPES[formData.shipmentClassification.mainType] || []);
     }
-  };
+  }, [formData.shipmentClassification.mainType]);
 
-  // Handle Package Change
-  const handlePackageChange = (index, field, value) => {
-    setFormData(prev => {
-      const newData = JSON.parse(JSON.stringify(prev));
-      
-      if (field.includes('.')) {
-        const [parent, child] = field.split('.');
-        if (!newData.shipmentDetails.packageDetails[index][parent]) {
-          newData.shipmentDetails.packageDetails[index][parent] = {};
-        }
-        newData.shipmentDetails.packageDetails[index][parent][child] = value;
-      } else {
-        newData.shipmentDetails.packageDetails[index][field] = value;
-      }
-      
-      const item = newData.shipmentDetails.packageDetails[index];
-      if (item.dimensions.length && item.dimensions.width && item.dimensions.height) {
-        const volume = (item.dimensions.length * item.dimensions.width * item.dimensions.height) / 1000000;
-        newData.shipmentDetails.packageDetails[index].volume = parseFloat(volume.toFixed(3));
-      }
-       
-      
-      return newData;
-    });
-  };
-
-  // Add Package Item
-  const addPackageItem = () => {
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        shipmentDetails: {
-          ...prev.shipmentDetails,
-          packageDetails: [
-            ...prev.shipmentDetails.packageDetails,
-            {
-              description: '',
-              packagingType: 'carton',
-              quantity: 1,
-              weight: 0,
-              volume: 0,
-              dimensions: {
-                length: 0,
-                width: 0,
-                height: 0,
-                unit: 'cm'
-              },
-              productCategory: '',
-              hsCode: '',
-              value: { amount: 0, currency: 'USD' },
-              hazardous: false,
-              temperatureControlled: {
-                required: false,
-                minTemp: null,
-                maxTemp: null
-              }
-            }
-          ]
-        }
-      }; 
-      return newData;
-    });
-  };
-
-  // Remove Package Item
-  const removePackageItem = (index) => {
-    if (formData.shipmentDetails.packageDetails.length > 1) {
-      setFormData(prev => {
-        const newData = {
-          ...prev,
-          shipmentDetails: {
-            ...prev.shipmentDetails,
-            packageDetails: prev.shipmentDetails.packageDetails.filter((_, i) => i !== index)
-          }
-        }; 
-        return newData;
-      });
-    }
-  };
-
-  // Select Customer
-  const selectCustomer = (customer) => {
-    setSelectedCustomer(customer);
-    
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        customer: customer._id,
-        sender: {
-          ...prev.sender,
-          name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
-          companyName: customer.companyName || '',
-          email: customer.email || '',
-          phone: customer.phone || '',
-          address: {
-            ...prev.sender.address,
-            addressLine1: customer.companyAddress || '',
-            country: customer.destinationMarkets?.[0] || ''
-          }
-        }
-      }; 
-      return newData;
-    });
-    
-    toast.success(`Customer ${customer.firstName} ${customer.lastName} selected`);
-  };
-
-  // Validate Form
-  const validateForm = () => {
-    const newErrors = {}; 
-
-    if (!formData.shipmentClassification.mainType) {
-      newErrors['shipmentClassification.mainType'] = 'Shipment type is required';
-    }
-    if (!formData.shipmentClassification.subType) {
-      newErrors['shipmentClassification.subType'] = 'Shipment sub-type is required';
-    }
-
-    if (!formData.shipmentDetails.origin) {
-      newErrors['shipmentDetails.origin'] = 'Origin is required';
-    }
-    if (!formData.shipmentDetails.destination) {
-      newErrors['shipmentDetails.destination'] = 'Destination is required';
-    }
- 
-
-    if (!formData.payment.mode) {
-      newErrors['payment.mode'] = 'Payment mode is required';
-    }
-
-    formData.shipmentDetails.packageDetails.forEach((item, index) => {
-      if (!item.description) {
-        newErrors[`package_desc_${index}`] = 'Description is required';
-      }
-      if (!item.quantity || item.quantity < 1) {
-        newErrors[`package_qty_${index}`] = 'Minimum 1 item required';
-      }
-      if (!item.weight || item.weight <= 0) {
-        newErrors[`package_weight_${index}`] = 'Weight is required';
-      }
-    });
-
-    if (!formData.sender.name) {
-      newErrors['sender.name'] = 'Sender name is required';
-    }
-    if (!formData.sender.email) {
-      newErrors['sender.email'] = 'Sender email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.sender.email)) {
-      newErrors['sender.email'] = 'Invalid email format';
-    }
-    if (!formData.sender.phone) {
-      newErrors['sender.phone'] = 'Sender phone is required';
-    }
-
-    if (!formData.receiver.name) {
-      newErrors['receiver.name'] = 'Receiver name is required';
-    }
-    if (!formData.receiver.email) {
-      newErrors['receiver.email'] = 'Receiver email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.receiver.email)) {
-      newErrors['receiver.email'] = 'Invalid email format';
-    }
-    if (!formData.receiver.phone) {
-      newErrors['receiver.phone'] = 'Receiver phone is required';
-    }
-    if (!formData.receiver.address.addressLine1) {
-      newErrors['receiver.address.addressLine1'] = 'Receiver address is required';
-    }
-    if (!formData.receiver.address.city) {
-      newErrors['receiver.address.city'] = 'City is required';
-    }
-    if (!formData.receiver.address.country) {
-      newErrors['receiver.address.country'] = 'Country is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle Submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (currentStep !== 4) {
-      console.log('Not on step 4, current step:', currentStep);
-      return;
-    }
-
-    const origin = formData.shipmentDetails?.origin;
-    const destination = formData.shipmentDetails?.destination;
-
-    console.log('🔍 Final Check - Origin:', origin, 'Destination:', destination);
-
-    if (!origin || !destination) {
-      toast.error('Origin and Destination are required! Please go back to Step 1.');
-      setCurrentStep(1);
-      return;
-    }
-
-    if (!validateForm()) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setServerErrors([]);
-
-    try {
-      const bookingData = {
-        customer: formData.customer,
-        createdBy: adminUser?._id,
-        
-        shipmentClassification: formData.shipmentClassification,
-        serviceType: formData.serviceType,
-        
-        shipmentDetails: {
-          origin: origin,
-          destination: destination,
-          shippingMode: formData.shipmentDetails.shippingMode,
-          packageDetails: formData.shipmentDetails.packageDetails,
-          specialInstructions: formData.shipmentDetails.specialInstructions || '',
-          referenceNumber: formData.customerReference || ''
-        },
-        
- 
-        
-        payment: {
-          mode: formData.payment.mode,
-          currency: formData.payment.currency || 'USD'
-        },
-        
-        sender: formData.sender,
-        receiver: formData.receiver,
-        courier: formData.courier,
-        
-        status: 'booking_requested',
-        pricingStatus: 'pending',
-        
-        timeline: [{
-          status: 'booking_requested',
-          description: 'Booking created by admin',
-          updatedBy: adminUser?._id,
-          timestamp: new Date()
-        }]
-      };
-
-      console.log('📦 Sending booking data:', JSON.stringify(bookingData, null, 2));
-
-      const response = await createBooking(bookingData);
-      
-      if (response.success) {
-        setShowSuccess(true);
-        toast.success('Booking created successfully!');
-         
-        
-        setTimeout(() => {
-          router.push('/Bookings/my_bookings');
-        }, 2000);
-      } else {
-        setServerErrors([{ msg: response.message || 'Failed to create booking' }]);
-        toast.error(response.message || 'Failed to create booking');
-        setIsSubmitting(false);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setServerErrors([{ msg: error.message || 'Network error' }]);
-      toast.error(error.message || 'Network error');
-      setIsSubmitting(false);
-    }
-  };
-
-  // Next Step
+  // ==================== STEP NAVIGATION ====================
+  
   const nextStep = () => {
-    let isValid = true;
-    
-    if (currentStep === 1) {
-      console.log('📋 Step 1 Values:', {
-        origin: formData.shipmentDetails.origin,
-        destination: formData.shipmentDetails.destination
-      });
-
-     if (!formData.shipmentClassification.mainType || 
-          !formData.shipmentClassification.subType) {
-        isValid = false;
-        toast.error('Please select shipment type and sub-type');
-      }  else if (!formData.payment.mode) {
-        isValid = false;
-        toast.error('Please select payment mode');
-      }
-    } else if (currentStep === 2) {
-      const hasInvalidPackage = formData.shipmentDetails.packageDetails.some(
-        item => !item.description || !item.quantity || !item.weight
-      );
-      if (hasInvalidPackage) {
-        isValid = false;
-        toast.error('Please complete all package details');
-      }
-    } else if (currentStep === 3) {
-      if (!formData.sender.name || !formData.sender.email || !formData.sender.phone ||
-          !formData.receiver.name || !formData.receiver.email || !formData.receiver.phone ||
-          !formData.receiver.address.addressLine1 || !formData.receiver.address.city ||
-          !formData.receiver.address.country) {
-        isValid = false;
-        toast.error('Please complete all required fields');
-      }
-    }
-
-    if (isValid) { 
+    if (validateStep(currentStep)) {
       setCurrentStep(prev => Math.min(prev + 1, 4));
+      if (currentStep + 1 === 4) {
+        setIsReviewConfirmed(false);
+      }
+    } else {
+      toast.error('Please fill all required fields correctly');
     }
   };
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
- 
 
+  // ==================== REVIEW CONFIRMATION HANDLER ====================
+  
+  const handleConfirmReview = () => {
+    if (validateStep(3) && validateStep(2) && validateStep(1)) {
+      setIsReviewConfirmed(true);
+      toast.success('Details confirmed! You can now submit the booking.');
+    } else {
+      toast.error('Please complete all required fields before confirming');
+    }
+  };
+
+  // ==================== SUBMIT HANDLER ====================
+  
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  console.log('🔍 ========== SUBMIT STARTED ==========');
+  console.log('Current Step:', currentStep);
+  console.log('Is Review Confirmed:', isReviewConfirmed);
+  console.log('Pickup Required:', pickupRequired);
+  
+  if (currentStep !== 4) {
+    toast.info('📋 Please complete all steps first');
+    return;
+  }
+  
+  if (!isReviewConfirmed) {
+    toast.warning('⚠️ Please review all details and click "Confirm Details" before creating booking');
+    return;
+  }
+  
+  if (!loggedInUser || !loggedInUser._id) {
+    toast.error('👤 User not logged in. Please login again.');
+    setTimeout(() => {
+      router.push('/auth/login');
+    }, 1500);
+    return;
+  }
+
+  if (!formData.receiver.address.country) {
+    toast.error('🌍 Please select receiver country');
+    setCurrentStep(3);
+    return;
+  }
+  if (!formData.receiver.address.state) {
+    toast.error('🗺️ Please select receiver state');
+    setCurrentStep(3);
+    return;
+  }
+  if (!formData.receiver.address.city) {
+    toast.error('🏙️ Please select receiver city');
+    setCurrentStep(3);
+    return;
+  }
+
+  if (pickupRequired && !formData.sender.pickupDate) {
+    toast.error('🚚 Pickup date is required (Pickup Required is checked)');
+    setCurrentStep(3);
+    return;
+  }
+
+  if (formData.shipmentDetails.packageDetails.length === 0) {
+    toast.error('📦 Please add at least one package');
+    setCurrentStep(2);
+    return;
+  }
+
+  let hasInvalidPackage = false;
+  for (let i = 0; i < formData.shipmentDetails.packageDetails.length; i++) {
+    const pkg = formData.shipmentDetails.packageDetails[i];
+    if (!pkg.description) {
+      toast.error(`📦 Package ${i + 1}: Description is required`);
+      setCurrentStep(2);
+      hasInvalidPackage = true;
+      break;
+    }
+    if (!pkg.quantity || pkg.quantity < 1) {
+      toast.error(`📦 Package ${i + 1}: Quantity must be at least 1`);
+      setCurrentStep(2);
+      hasInvalidPackage = true;
+      break;
+    }
+    if (!pkg.weight || pkg.weight <= 0) {
+      toast.error(`⚖️ Package ${i + 1}: Weight is required`);
+      setCurrentStep(2);
+      hasInvalidPackage = true;
+      break;
+    }
+  }
+  if (hasInvalidPackage) return;
+  
+  if (!validateStep(3) || !validateStep(2) || !validateStep(1)) {
+    toast.error('❌ Please complete all required fields');
+    setCurrentStep(1);
+    return;
+  }
+  
+  const loadingToast = toast.loading('🚀 Creating booking... Please wait');
+  
+  setIsSubmitting(true);
+  setServerErrors([]);
+
+  try {
+    const bookingData = {
+      customer: loggedInUser._id,
+      createdBy: loggedInUser._id,
+      pickupRequired: pickupRequired,
+      
+      shipmentClassification: {
+        mainType: formData.shipmentClassification.mainType,
+        subType: formData.shipmentClassification.subType
+      },
+      
+      serviceType: formData.serviceType,
+      
+      shipmentDetails: {
+        origin: formData.shipmentDetails.origin,
+        destination: formData.shipmentDetails.destination,
+        shippingMode: formData.shipmentDetails.shippingMode,
+        packageDetails: formData.shipmentDetails.packageDetails.map(pkg => ({
+          description: pkg.description,
+          packagingType: pkg.packagingType,
+          quantity: Number(pkg.quantity),
+          weight: Number(pkg.weight),
+          volume: Number(pkg.volume),
+          dimensions: {
+            length: Number(pkg.dimensions.length) || 0,
+            width: Number(pkg.dimensions.width) || 0,
+            height: Number(pkg.dimensions.height) || 0,
+            unit: 'cm'
+          },
+          productCategory: pkg.productCategory || '',
+          hsCode: pkg.hsCode || '',
+          value: {
+            amount: Number(pkg.value.amount) || 0,
+            currency: formData.payment.currency || 'USD'
+          },
+          hazardous: pkg.hazardous || false
+        })),
+        specialInstructions: formData.shipmentDetails.specialInstructions || '',
+        referenceNumber: formData.customerReference || ''
+      },
+      
+      payment: {
+        mode: formData.payment.mode,
+        currency: formData.payment.currency || 'USD'
+      },
+      
+      sender: {
+        name: formData.sender.name,
+        companyName: formData.sender.companyName || '',
+        email: formData.sender.email,
+        phone: formData.sender.phone,
+        address: {
+          addressLine1: formData.sender.address.addressLine1 || '',
+          addressLine2: formData.sender.address.addressLine2 || '',
+          city: formData.sender.address.city || '',
+          state: formData.sender.address.state || '',
+          country: formData.sender.address.country || '',
+          postalCode: formData.sender.address.postalCode || ''
+        },
+        pickupDate: pickupRequired ? formData.sender.pickupDate : null,
+        pickupInstructions: pickupRequired ? formData.sender.pickupInstructions || '' : ''
+      },
+      
+      receiver: {
+        name: formData.receiver.name,
+        companyName: formData.receiver.companyName || '',
+        email: formData.receiver.email,
+        phone: formData.receiver.phone,
+        address: {
+          addressLine1: formData.receiver.address.addressLine1,
+          addressLine2: formData.receiver.address.addressLine2 || '',
+          city: formData.receiver.address.city,
+          state: formData.receiver.address.state,
+          country: formData.receiver.address.country,
+          postalCode: formData.receiver.address.postalCode || ''
+        },
+        deliveryInstructions: formData.receiver.deliveryInstructions || '',
+        isResidential: formData.receiver.isResidential || false
+      },
+      
+      courier: {
+        company: 'Cargo Logistics Group',
+        serviceType: formData.serviceType
+      },
+      
+      status: 'booking_requested',
+      pricingStatus: 'pending',
+      
+      timeline: [{
+        status: 'booking_requested',
+        description: 'Booking created',
+        updatedBy: loggedInUser._id,
+        timestamp: new Date()
+      }]
+    };
+
+    console.log('📤 Sending booking data:', JSON.stringify(bookingData, null, 2));
+
+    const response = await createBooking(bookingData);
+    
+    toast.dismiss(loadingToast);
+    
+    console.log('✅ Response:', response);
+    
+    if (response.success) {
+      toast.success('🎉 Booking created successfully! Redirecting...');
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.push('/Bookings/my_bookings');
+      }, 2000);
+    } else {
+      let errorMsg = response.message || 'Failed to create booking';
+      
+      if (errorMsg.toLowerCase().includes('customer')) {
+        errorMsg = '👤 Invalid customer information. Please try again.';
+      } else if (errorMsg.toLowerCase().includes('package')) {
+        errorMsg = '📦 Package information is incomplete. Please check all package fields.';
+      } else if (errorMsg.toLowerCase().includes('address')) {
+        errorMsg = '📍 Address information is incomplete. Please check receiver address.';
+      } else if (errorMsg.toLowerCase().includes('date')) {
+        errorMsg = '📅 Date information is invalid. Please check departure and arrival dates.';
+      } else if (errorMsg.toLowerCase().includes('email')) {
+        errorMsg = '📧 Invalid email address. Please check sender and receiver emails.';
+      } else {
+        errorMsg = `❌ ${errorMsg}`;
+      }
+      
+      toast.error(errorMsg);
+      setServerErrors([{ msg: response.message || 'Failed to create booking' }]);
+    }
+  } catch (error) {
+    toast.dismiss(loadingToast);
+    
+    console.error('❌ ========== ERROR DETAILS ==========');
+    console.error('Error:', error);
+    console.error('Error Response:', error.response);
+    console.error('Error Data:', error.response?.data);
+    console.error('Error Status:', error.response?.status);
+    
+    let errorMessage = 'Network error. Please try again.';
+    
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      } else if (error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response.data.msg) {
+        errorMessage = error.response.data.msg;
+      } else if (Array.isArray(error.response.data)) {
+        errorMessage = error.response.data.map(e => e.msg || e.message).join(', ');
+      } else {
+        errorMessage = JSON.stringify(error.response.data);
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    let friendlyMessage = '';
+    
+    if (errorMessage.toLowerCase().includes('customer')) {
+      friendlyMessage = '👤 Customer information is invalid. Please reselect customer.';
+    } else if (errorMessage.toLowerCase().includes('package')) {
+      friendlyMessage = '📦 Package details are incomplete. Please check all package fields.';
+    } else if (errorMessage.toLowerCase().includes('address')) {
+      friendlyMessage = '📍 Address information is incomplete. Please check receiver address.';
+    } else if (errorMessage.toLowerCase().includes('date')) {
+      friendlyMessage = '📅 Date information is invalid. Please check departure and arrival dates.';
+    } else if (errorMessage.toLowerCase().includes('email')) {
+      friendlyMessage = '📧 Email address is invalid. Please check sender and receiver emails.';
+    } else if (errorMessage.toLowerCase().includes('state')) {
+      friendlyMessage = '🗺️ State is required. Please select a state for the receiver.';
+    } else if (errorMessage.toLowerCase().includes('city')) {
+      friendlyMessage = '🏙️ City is required. Please select a city for the receiver.';
+    } else if (errorMessage.toLowerCase().includes('country')) {
+      friendlyMessage = '🌍 Country is required. Please select a country for the receiver.';
+    } else if (errorMessage.toLowerCase().includes('weight')) {
+      friendlyMessage = '⚖️ Package weight is required. Please add weight for all packages.';
+    } else if (errorMessage.toLowerCase().includes('quantity')) {
+      friendlyMessage = '📦 Package quantity is required. Please add quantity for all packages.';
+    } else if (errorMessage.toLowerCase().includes('description')) {
+      friendlyMessage = '📝 Package description is required. Please add description for all packages.';
+    } else if (errorMessage.toLowerCase().includes('pickup')) {
+      friendlyMessage = '🚚 Pickup information is incomplete. Please check pickup details.';
+    } else if (errorMessage.toLowerCase().includes('validation')) {
+      friendlyMessage = '⚠️ Validation error. Please check all fields and try again.';
+    } else if (errorMessage.toLowerCase().includes('500') || errorMessage.toLowerCase().includes('server')) {
+      friendlyMessage = '🔧 Server error. Please try again later or contact support.';
+    } else if (errorMessage.toLowerCase().includes('401') || errorMessage.toLowerCase().includes('unauthorized')) {
+      friendlyMessage = '🔒 Session expired. Please login again.';
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 2000);
+    } else {
+      friendlyMessage = `❌ ${errorMessage}`;
+    }
+    
+    toast.error(friendlyMessage);
+    setServerErrors([{ msg: errorMessage }]);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  // ==================== RENDER ====================
+  
+  if (isLoadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-[#2563eb] mx-auto mb-4" />
+          <p className="text-sm text-gray-500">Loading your information...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!loggedInUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
+          <p className="text-sm text-gray-700 mb-2">Please login to create a booking</p>
+          <Link href="/auth/login" className="text-sm text-[#2563eb] hover:underline">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -1096,7 +1257,7 @@ useEffect(() => {
               <div>
                 <h1 className="text-base font-semibold text-gray-900 flex items-center">
                   <Package className="h-4 w-4 mr-1.5 text-[#2563eb]" />
-                  Create New Booking - Admin
+                  Create New Booking
                 </h1>
                 <p className="text-xs text-gray-500">Cargo Logistics Group</p>
               </div>
@@ -1116,6 +1277,21 @@ useEffect(() => {
                   />
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* User Welcome Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+          <div className="flex items-start">
+            <User className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="ml-2 flex-1">
+              <p className="text-xs font-medium text-blue-800">Welcome, {loggedInUser.firstName || loggedInUser.name || 'User'}!</p>
+              <p className="text-xs text-blue-700 mt-1">
+                Your contact details have been auto-filled. You can edit them if needed.
+              </p>
             </div>
           </div>
         </div>
@@ -1175,11 +1351,9 @@ useEffect(() => {
 
           {/* Form Content */}
           <div className="p-4">
-            {/* Step 1: Customer & Shipment Info */}
+            {/* Step 1: Shipment Info */}
             {currentStep === 1 && (
-              <div className="space-y-3 animate-fadeIn"> 
-
-                {/* Shipment Classification */}
+              <div className="space-y-3 animate-fadeIn">
                 <div className="grid grid-cols-2 gap-3">
                   <Select
                     label="Shipment Type"
@@ -1215,16 +1389,40 @@ useEffect(() => {
                     icon={Briefcase}
                   />
                   
-                  <Select
-                    label="Payment Mode"
-                    name="payment.mode"
-                    value={formData.payment.mode}
-                    onChange={handleInputChange}
-                    options={PAYMENT_MODES}
-                    required
-                    icon={CreditCard}
-                    error={errors['payment.mode']}
-                  />
+                  {/* Payment Mode & Currency Display */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      label="Payment Mode"
+                      name="payment.mode"
+                      value={formData.payment.mode}
+                      onChange={handleInputChange}
+                      options={PAYMENT_MODES}
+                      required
+                      icon={CreditCard}
+                      error={errors['payment.mode']}
+                    />
+                    
+                    {/* Currency Display */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Currency
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                          <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={`${formData.payment.currency} (${CURRENCY_SYMBOLS[formData.payment.currency] || '$'})`}
+                          disabled
+                          className="w-full px-3 py-2 pl-8 text-sm border rounded-md bg-gray-100 text-gray-700"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Based on destination: {formData.shipmentDetails.destination}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1347,7 +1545,6 @@ useEffect(() => {
                         error={errors[`package_weight_${index}`]}
                       />
 
-                      {/* Dimensions */}
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                           Dimensions (cm)
@@ -1396,13 +1593,34 @@ useEffect(() => {
                       />
 
                       <div className="col-span-2 grid grid-cols-2 gap-2"> 
-
-                        <Select
-                          label="Currency"
-                          value={item.value.currency}
-                          onChange={(e) => handlePackageChange(index, 'value.currency', e.target.value)}
-                          options={CURRENCIES.map(curr => ({ value: curr, label: curr }))}
+                        <Input
+                          label="Value"
+                          type="number"
+                          value={item.value.amount}
+                          onChange={(e) => handlePackageChange(index, 'value.amount', parseFloat(e.target.value) || 0)}
+                          icon={DollarSign}
+                          min="0"
+                          step="0.01"
+                          placeholder="Enter value"
                         />
+
+                        {/* Currency Display - Readonly */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Currency
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                              <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+                            </div>
+                            <input
+                              type="text"
+                              value={`${formData.payment.currency} (${CURRENCY_SYMBOLS[formData.payment.currency] || '$'})`}
+                              disabled
+                              className="w-full px-3 py-2 pl-8 text-sm border rounded-md bg-gray-100 text-gray-700"
+                            />
+                          </div>
+                        </div>
                       </div> 
                     </div>
                   </div>
@@ -1449,14 +1667,12 @@ useEffect(() => {
             {/* Step 3: Sender & Receiver */}
             {currentStep === 3 && (
               <div className="space-y-4 animate-fadeIn">
-                {/* Sender Information */}
-                <div className="border rounded-md p-3">
+                {/* Sender Information - Auto-filled from logged-in user */}
+                <div className="border rounded-md p-3 bg-blue-50">
                   <h3 className="text-xs font-medium text-gray-700 mb-2 flex items-center">
                     <User className="h-3.5 w-3.5 mr-1 text-[#2563eb]" />
-                    Sender Information
-                    {selectedCustomer && (
-                      <span className="ml-2 text-xs text-green-600">(Auto-filled from customer)</span>
-                    )}
+                    Sender Information (Your Details)
+                    <span className="ml-2 text-xs text-green-600">✓ Auto-filled from your profile</span>
                   </h3>
                   
                   <div className="grid grid-cols-2 gap-2">
@@ -1538,26 +1754,49 @@ useEffect(() => {
                       name="sender.address.country"
                       value={formData.sender.address.country}
                       onChange={handleInputChange}
-                    /> 
-
-                    <Input
-                      label="Pickup Date"
-                      type="date"
-                      name="sender.pickupDate"
-                      value={formData.sender.pickupDate}
-                      onChange={handleInputChange}
-                      icon={Calendar}
-                      min={new Date().toISOString().split('T')[0]}
                     />
+                    
+                    {/* Pickup Required Section */}
+                    <div className="col-span-2 mt-2 pt-2 border-t">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={pickupRequired}
+                          onChange={(e) => setPickupRequired(e.target.checked)}
+                          className="h-4 w-4 text-[#2563eb] focus:ring-[#2563eb] border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm font-medium text-gray-700">
+                          <TruckIcon className="h-4 w-4 inline mr-1 text-[#2563eb]" />
+                          Pickup Required?
+                        </span>
+                        <span className="ml-2 text-xs text-gray-500">(We will arrange pickup from your location)</span>
+                      </label>
+                    </div>
 
-                    <TextArea
-                      label="Pickup Instructions"
-                      name="sender.pickupInstructions"
-                      value={formData.sender.pickupInstructions}
-                      onChange={handleInputChange}
-                      placeholder="Special instructions for pickup"
-                      rows={2}
-                    />
+                    {pickupRequired && (
+                      <>
+                        <Input
+                          label="Pickup Date"
+                          type="date"
+                          name="sender.pickupDate"
+                          value={formData.sender.pickupDate}
+                          onChange={handleInputChange}
+                          required
+                          icon={Calendar}
+                          min={new Date().toISOString().split('T')[0]}
+                          error={errors['sender.pickupDate']}
+                        />
+
+                        <TextArea
+                          label="Pickup Instructions"
+                          name="sender.pickupInstructions"
+                          value={formData.sender.pickupInstructions}
+                          onChange={handleInputChange}
+                          placeholder="Special instructions for pickup (e.g., gate code, floor, etc.)"
+                          rows={2}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -1630,61 +1869,48 @@ useEffect(() => {
                         icon={MapPin}
                       />
                     </div>
- 
 
-{/* State Dropdown - Improved Version */}
-<div>
-  <Select
-    label="State"
-    name="receiver.address.state"
-    value={formData.receiver.address.state}
-    onChange={handleStateChange}
-    options={states.map(state => ({ value: state, label: state }))}
-    required
-    icon={MapPin}
-    error={errors['receiver.address.state']}
-    disabled={!formData.receiver.address.country || loadingLocation}
-    loading={loadingLocation}
-    placeholder={loadingLocation ? 'Loading states...' : 'Select state'}
-  />
-  
-  {/* Debug Info - Remove after fixing */}
-  {formData.receiver.address.country === 'UK' && (
-    <div className="mt-1 text-xs">
-      <span className="text-gray-500">States loaded: {states.length}</span>
-      {states.length > 0 && (
-        <span className="text-green-600 ml-2">✓ {states.slice(0, 3).join(', ')}...</span>
-      )}
-    </div>
-  )}
-</div>
+                    {/* Country Dropdown */}
+                    <Select
+                      label="Country"
+                      name="receiver.address.country"
+                      value={formData.receiver.address.country}
+                      onChange={handleDestinationChange}
+                      options={DESTINATIONS}
+                      required
+                      icon={Globe}
+                      error={errors['receiver.address.country']}
+                    />
 
-{/* City Dropdown - Improved Version */}
-<div>
-  <Select
-    label="City"
-    name="receiver.address.city"
-    value={formData.receiver.address.city}
-    onChange={handleCityChange}
-    options={cities.map(city => ({ value: city, label: city }))}
-    required
-    icon={MapPin}
-    error={errors['receiver.address.city']}
-    disabled={!formData.receiver.address.state || loadingLocation}
-    loading={loadingLocation}
-    placeholder={loadingLocation ? 'Loading cities...' : 'Select city'}
-  />
-  
-  {/* Debug Info - Remove after fixing */}
-  {formData.receiver.address.state && (
-    <div className="mt-1 text-xs">
-      <span className="text-gray-500">Cities loaded: {cities.length}</span>
-      {cities.length > 0 && (
-        <span className="text-green-600 ml-2">✓ {cities.slice(0, 3).join(', ')}...</span>
-      )}
-    </div>
-  )}
-</div> 
+                    {/* State Dropdown */}
+                    <Select
+                      label="State"
+                      name="receiver.address.state"
+                      value={formData.receiver.address.state}
+                      onChange={handleStateChange}
+                      options={states.map(state => ({ value: state, label: state }))}
+                      required
+                      icon={MapPin}
+                      error={errors['receiver.address.state']}
+                      disabled={!formData.receiver.address.country || loadingLocation}
+                      loading={loadingLocation}
+                      placeholder={loadingLocation ? 'Loading states...' : 'Select state'}
+                    />
+
+                    {/* City Dropdown */}
+                    <Select
+                      label="City"
+                      name="receiver.address.city"
+                      value={formData.receiver.address.city}
+                      onChange={handleCityChange}
+                      options={cities.map(city => ({ value: city, label: city }))}
+                      required
+                      icon={MapPin}
+                      error={errors['receiver.address.city']}
+                      disabled={!formData.receiver.address.state || loadingLocation}
+                      loading={loadingLocation}
+                      placeholder={loadingLocation ? 'Loading cities...' : 'Select city'}
+                    />
 
                     <div className="col-span-2">
                       <TextArea
@@ -1710,68 +1936,55 @@ useEffect(() => {
                       </label>
                     </div>
                   </div>
-
-                  {/* Loading indicator */}
-                  {loadingLocation && (
-                    <div className="mt-3 p-2 bg-blue-50 rounded-md flex items-center">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500 mr-2" />
-                      <span className="text-xs text-blue-600">Loading location data...</span>
-                    </div>
-                  )}
-
-                  {/* Selected country info */}
-                  {formData.receiver.address.country && !loadingLocation && (
-                    <div className="mt-3 p-2 bg-green-50 rounded-md">
-                      <p className="text-xs text-green-700">
-                        ✓ Showing states for {formData.receiver.address.country}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
 
-            {/* Step 4: Review */}
+            {/* Step 4: Review & Confirm */}
             {currentStep === 4 && (
               <div className="space-y-3 animate-fadeIn">
+                {!isReviewConfirmed && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-3">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                      <div className="ml-2 flex-1">
+                        <p className="text-xs font-medium text-yellow-800">Review Required</p>
+                        <p className="text-xs text-yellow-700 mt-1">
+                          Please review all details below. Once confirmed, click "Confirm Details" before submitting.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isReviewConfirmed && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-3">
+                    <div className="flex items-start">
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div className="ml-2 flex-1">
+                        <p className="text-xs font-medium text-green-800">Details Confirmed</p>
+                        <p className="text-xs text-green-700 mt-1">
+                          You can now submit the booking.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-gray-50 rounded-md p-3">
                   <h3 className="text-xs font-medium text-gray-700 mb-2 flex items-center">
                     <Package className="h-3.5 w-3.5 mr-1 text-[#2563eb]" />
                     Shipment Overview
                   </h3>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-gray-500">Customer:</span>{' '}
-                      <span className="font-medium">
-                        {selectedCustomer?.firstName} {selectedCustomer?.lastName}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Type:</span>{' '}
-                      <span className="font-medium">
-                        {formData.shipmentClassification.mainType} - {formData.shipmentClassification.subType}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Mode:</span>{' '}
-                      <span className="font-medium">{formData.shipmentDetails.shippingMode}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Payment:</span>{' '}
-                      <span className="font-medium">{formData.payment.mode}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Origin:</span>{' '}
-                      <span className="font-medium">{formData.shipmentDetails.origin}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Destination:</span>{' '}
-                      <span className="font-medium">{formData.shipmentDetails.destination}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Service:</span>{' '}
-                      <span className="font-medium">{formData.serviceType}</span>
-                    </div> 
+                    <div><span className="text-gray-500">Type:</span> <span className="font-medium">{formData.shipmentClassification.mainType} - {formData.shipmentClassification.subType}</span></div>
+                    <div><span className="text-gray-500">Mode:</span> <span className="font-medium">{formData.shipmentDetails.shippingMode}</span></div>
+                    <div><span className="text-gray-500">Payment:</span> <span className="font-medium">{formData.payment.mode}</span></div>
+                    <div><span className="text-gray-500">Origin:</span> <span className="font-medium">{formData.shipmentDetails.origin}</span></div>
+                    <div><span className="text-gray-500">Destination:</span> <span className="font-medium">{formData.shipmentDetails.destination}</span></div>
+                    <div><span className="text-gray-500">Currency:</span> <span className="font-medium">{formData.payment.currency} ({CURRENCY_SYMBOLS[formData.payment.currency]})</span></div>
+                    <div><span className="text-gray-500">Service:</span> <span className="font-medium">{formData.serviceType}</span></div> 
+                    <div><span className="text-gray-500">Pickup Required:</span> <span className="font-medium">{pickupRequired ? 'Yes' : 'No'}</span></div>
                   </div>
                 </div>
 
@@ -1785,30 +1998,16 @@ useEffect(() => {
                       <div key={index} className="text-xs border-b last:border-0 pb-1 last:pb-0">
                         <div className="font-medium">{item.description}</div>
                         <div className="text-gray-500 flex justify-between">
-                          <span>
-                            {item.quantity} pcs | {item.weight} kg | {item.volume} CBM
-                            {item.hazardous && ' ⚠️ Hazardous'}
-                          </span>
-                          {item.value.amount > 0 && (
-                            <span className="font-medium">{item.value.currency} {item.value.amount.toLocaleString()}</span>
-                          )}
+                          <span>{item.quantity} pcs | {item.weight} kg | {item.volume} CBM</span>
+                          {item.value.amount > 0 && <span className="font-medium">{formData.payment.currency} {item.value.amount.toLocaleString()}</span>}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="mt-2 pt-2 border-t grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <span className="text-gray-500">Total Packages:</span>{' '}
-                      <span className="font-medium">{formData.shipmentDetails.totalPackages}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Total Weight:</span>{' '}
-                      <span className="font-medium">{formData.shipmentDetails.totalWeight.toFixed(1)} kg</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Total Volume:</span>{' '}
-                      <span className="font-medium">{formData.shipmentDetails.totalVolume.toFixed(3)} CBM</span>
-                    </div>
+                    <div><span className="text-gray-500">Total Packages:</span> <span className="font-medium">{formData.shipmentDetails.totalPackages}</span></div>
+                    <div><span className="text-gray-500">Total Weight:</span> <span className="font-medium">{formData.shipmentDetails.totalWeight.toFixed(1)} kg</span></div>
+                    <div><span className="text-gray-500">Total Volume:</span> <span className="font-medium">{formData.shipmentDetails.totalVolume.toFixed(3)} CBM</span></div>
                   </div>
                 </div>
 
@@ -1816,16 +2015,17 @@ useEffect(() => {
                   <div className="bg-gray-50 rounded-md p-3">
                     <h3 className="text-xs font-medium text-gray-700 mb-2 flex items-center">
                       <User className="h-3.5 w-3.5 mr-1 text-[#2563eb]" />
-                      Sender
+                      Sender (You)
                     </h3>
                     <div className="text-xs">
                       <p className="font-medium">{formData.sender.name}</p>
                       {formData.sender.companyName && <p>{formData.sender.companyName}</p>}
                       <p className="text-gray-600 mt-1">📞 {formData.sender.phone}</p>
                       <p className="text-gray-600">✉️ {formData.sender.email}</p>
-                      <p className="text-gray-600 mt-1">
-                        {formData.sender.address.city}, {formData.sender.address.state}, {formData.sender.address.country}
-                      </p>
+                      <p className="text-gray-600 mt-1">{formData.sender.address.city}, {formData.sender.address.state}, {formData.sender.address.country}</p>
+                      {pickupRequired && formData.sender.pickupDate && (
+                        <p className="text-blue-600 mt-1">📅 Pickup: {new Date(formData.sender.pickupDate).toLocaleDateString()}</p>
+                      )}
                     </div>
                   </div>
 
@@ -1838,9 +2038,7 @@ useEffect(() => {
                       <p className="font-medium">{formData.receiver.name}</p>
                       {formData.receiver.companyName && <p>{formData.receiver.companyName}</p>}
                       <p className="text-gray-600">{formData.receiver.address.addressLine1}</p>
-                      <p className="text-gray-600">
-                        {formData.receiver.address.city}, {formData.receiver.address.state} {formData.receiver.address.postalCode}
-                      </p>
+                      <p className="text-gray-600">{formData.receiver.address.city}, {formData.receiver.address.state}</p>
                       <p className="text-gray-600">{formData.receiver.address.country}</p>
                       <p className="text-gray-600 mt-1">📞 {formData.receiver.phone}</p>
                       <p className="text-gray-600">✉️ {formData.receiver.email}</p>
@@ -1850,9 +2048,8 @@ useEffect(() => {
 
                 <div className="bg-green-50 rounded-md p-2">
                   <div className="flex items-center">
-                    <CheckCircle className="h-3.5 w-3.5 text-green-500 mr-1.5" />
+                    <Info className="h-3.5 w-3.5 text-green-500 mr-1.5" />
                     <p className="text-xs text-green-700">
-                      Booking will be created for {selectedCustomer?.firstName} {selectedCustomer?.lastName}. 
                       Confirmation email will be sent to receiver.
                     </p>
                   </div>
@@ -1888,15 +2085,29 @@ useEffect(() => {
                   Next Step
                 </Button>
               ) : (
-                <Button
-                  type="submit"
-                  variant="success"
-                  size="sm"
-                  isLoading={isSubmitting}
-                  icon={Save}
-                >
-                  Create Booking
-                </Button>
+                <div className="flex space-x-3">
+                  {!isReviewConfirmed ? (
+                    <Button
+                      type="button"
+                      variant="success"
+                      size="sm"
+                      onClick={handleConfirmReview}
+                      icon={CheckCircle}
+                    >
+                      Confirm Details
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      variant="success"
+                      size="sm"
+                      isLoading={isSubmitting}
+                      icon={Save}
+                    >
+                      Create Booking
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -1905,10 +2116,10 @@ useEffect(() => {
         {/* Progress Summary */}
         <div className="mt-4 text-center">
           <p className="text-xs text-gray-500">
-            {currentStep === 1 && "📦 Select customer, shipment type and destination country"}
+            {currentStep === 1 && "📦 Select shipment type and destination country"}
             {currentStep === 2 && "📦 Add package details with packaging type"}
-            {currentStep === 3 && "📦 Enter sender and receiver information"}
-            {currentStep === 4 && "📦 Review and confirm booking"}
+            {currentStep === 3 && "📦 Enter receiver information (your details are auto-filled). You can also request pickup."}
+            {currentStep === 4 && "📦 Review and confirm booking - Click 'Confirm Details' then 'Create Booking'"}
           </p>
         </div>
       </div>

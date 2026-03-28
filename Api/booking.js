@@ -120,9 +120,7 @@ export const updatePriceQuote = async (bookingId, quoteData) => {
   }
 };
 
-// 5. CUSTOMER ACCEPT QUOTE
-// Controller: exports.acceptQuote
-// Endpoint: PUT /bookings/:id/accept
+// 5. CUSTOMER ACCEPT QUOTE 
 export const acceptQuote = async (bookingId, notes = '') => {
   try {
     const response = await axiosInstance.put(`/booking/${bookingId}/accept`, { notes });

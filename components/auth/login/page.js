@@ -8,6 +8,38 @@ import 'react-toastify/dist/ReactToastify.css';
 import { login } from '@/Api/Authentication'; 
 import { setAuthToken, setUserDetails, getAuthToken } from '@/helper/SessionHelper';  
 
+// ==================== FIREBASE IMPORTS ====================
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+
+// Your Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAtfh6fFkVmCnLMv7C5QVTU0T0g2tkpFjg",
+  authDomain: "cargo-logistics-a74bb.firebaseapp.com",
+  projectId: "cargo-logistics-a74bb",
+  storageBucket: "cargo-logistics-a74bb.firebasestorage.app",
+  messagingSenderId: "528939327711",
+  appId: "1:528939327711:web:5a69afd594f117ce38c96a",
+  measurementId: "G-NJBRZDHKHW"
+};
+
+// Initialize Firebase (শুধুমাত্র client-side এ)
+let auth;
+let googleProvider;
+
+if (typeof window !== 'undefined') {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope('email');
+    googleProvider.addScope('profile');
+    googleProvider.setCustomParameters({
+        prompt: 'select_account'
+    });
+}
+
+// ==================== COMPONENTS ====================
+import { googleLogin } from '@/Api/Authentication';
 const Button = ({
   children,
   type = 'button',
@@ -23,7 +55,8 @@ const Button = ({
   const variants = {
     primary: 'bg-[#E67E22] text-white hover:bg-[#d35400] focus:ring-[#E67E22]',
     secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
-    outline: 'border-2 border-[#E67E22] text-[#E67E22] hover:bg-[#fffaf6] focus:ring-[#E67E22]'
+    outline: 'border-2 border-[#E67E22] text-[#E67E22] hover:bg-[#fffaf6] focus:ring-[#E67E22]',
+    google: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500'
   };
 
   const sizes = {
@@ -48,7 +81,7 @@ const Button = ({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
-          Logging in...
+          {children}
         </div>
       ) : (
         children
@@ -75,7 +108,7 @@ const Input = ({
   return (
     <div className="mb-4">
       {label && (
-        <label htmlFor={name} className="block text-sm font-medium text-secondary mb-1">
+        <label htmlFor={name} className="block text-sm font-medium text-white mb-1">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -96,7 +129,7 @@ const Input = ({
           placeholder={placeholder}
           disabled={disabled}
           className={
-            'w-full px-3 py-2 border rounded-lg shadow-sm ' +
+            'w-full px-3 py-2 border rounded-lg shadow-sm bg-white/90 ' +
             'focus:outline-none focus:ring-2 focus:ring-[#E67E22] focus:border-[#E67E22] ' +
             (error ? 'border-red-500 ' : 'border-gray-300 ') +
             (disabled ? 'bg-gray-100 cursor-not-allowed ' : '') +
@@ -106,10 +139,12 @@ const Input = ({
           {...props}
         />
       </div>
-      {error && <p className="mt-1 text-sm text-red-600 font-bold">{error}</p>}
+      {error && <p className="mt-1 text-sm text-red-500 font-bold">{error}</p>}
     </div>
   );
 };
+
+// ==================== MAIN LOGIN COMPONENT ====================
 
 export default function LoginPage() {
   const router = useRouter();
@@ -120,24 +155,61 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isCheckingAuth, setIsCheckingAuth] = useState(true); 
 
+  // ==================== FIREBASE GOOGLE LOGIN FUNCTION ====================
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        const idToken = await user.getIdToken();
+        
+        // Use the new googleLogin function
+        const response = await googleLogin(
+            idToken,
+            user.email,
+            user.displayName,
+            user.photoURL,
+            user.uid
+        );
+        
+        if (response.success) {
+            toast.success(`Welcome ${response.user.firstName}!`);
+            
+            // Dispatch event for navbar update
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('authChange'));
+            }
+            
+            setTimeout(() => {
+                router.push('/profile');
+            }, 1500);
+        }
+    } catch (error) {
+        console.error('Google Login Error:', error);
+        toast.error(error.message || 'Google login failed');
+    } finally {
+        setGoogleLoading(false);
+    }
+};
+
+  // ==================== CHECK AUTH ON MOUNT ====================
   useEffect(() => { 
     const checkAuth = async () => {
       try {
         const token = getAuthToken(); 
         if (token) { 
-          // Get user details from localStorage
           const userStr = localStorage.getItem('user_details');
           if (userStr) {
             const user = JSON.parse(userStr);
-            // Check if user has customer role
             if (user.role === 'customer') {
               router.push('/profile');
             } else {
-              // If not customer, clear token and stay on login page
               localStorage.removeItem('auth_token');
               localStorage.removeItem('user_details');
               setIsCheckingAuth(false);
@@ -157,17 +229,7 @@ export default function LoginPage() {
     checkAuth();
   }, [router]); 
 
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen bg-[#fffaf6] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#E67E22] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-secondary">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // ==================== FORM VALIDATION ====================
   const validateForm = () => {
     const newErrors = {};
 
@@ -192,7 +254,6 @@ export default function LoginPage() {
       ...prev,
       [name]: value
     }));
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -204,10 +265,10 @@ export default function LoginPage() {
     setErrors(validationErrors);
   };
 
+  // ==================== NORMAL LOGIN HANDLER ====================
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Touch all fields to show errors
     setTouched({
       email: true,
       password: true
@@ -227,7 +288,6 @@ export default function LoginPage() {
         if (response.success && response.token) {
           const userData = response.data || response.user;
           
-          // Check if user has customer role
           if (userData.role !== 'customer') {
             toast.error('Access denied. Only customers can log in to this portal.', {
               position: 'top-right',
@@ -237,25 +297,18 @@ export default function LoginPage() {
             return;
           }
 
-          // Save to localStorage
-          console.log('Saving token to localStorage:', response.token);
           setAuthToken(response.token);
-          
-          console.log('Saving user to localStorage:', userData);
           setUserDetails(userData);
           
-          // Dispatch event for navbar to update
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('authChange'));
           }
           
-          // Show success message
           toast.success('Login successful! Redirecting...', {
             position: 'top-right',
             autoClose: 2000,
           });
           
-          // Small delay to ensure localStorage is set
           setTimeout(() => {
             router.push('/profile');
           }, 2000);
@@ -277,6 +330,7 @@ export default function LoginPage() {
     }
   };
 
+  // ==================== ICON RENDERER ====================
   const renderIcon = (type) => {
     switch(type) {
       case 'email':
@@ -296,6 +350,19 @@ export default function LoginPage() {
     }
   };
 
+  // ==================== LOADING STATE ====================
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[#fffaf6] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#E67E22] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-secondary">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== RENDER ====================
   return (
     <>
       <ToastContainer
@@ -311,16 +378,13 @@ export default function LoginPage() {
         theme="colored"
       />
       
-      <div className="h-[540px] bg-[#fffaf6] flex flex-col lg:flex-row">
+      <div className="min-h-screen bg-[#fffaf6] flex flex-col lg:flex-row">
         {/* Left Side - Branding/Info */}
         <div className="lg:w-1/2 bg-gradient-to-br from-[#0a1a3a] to-[#1a2f5a] p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
           {/* Animated Background Elements */}
           <div className="absolute inset-0 opacity-20">
-            {/* Floating Orbs */}
             <div className="absolute top-0 -left-4 w-96 h-96 bg-[#E67E22] rounded-full mix-blend-soft-light filter blur-3xl animate-float-slow"></div>
             <div className="absolute bottom-0 -right-4 w-96 h-96 bg-[#3C719D] rounded-full mix-blend-soft-light filter blur-3xl animate-float"></div>
-            
-            {/* Grid Pattern */}
             <div className="absolute inset-0" style={{
               backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)',
               backgroundSize: '40px 40px'
@@ -329,11 +393,7 @@ export default function LoginPage() {
 
           {/* Content */}
           <div className="relative z-10">
-            {/* Logo and Brand */}
             <div className="flex items-center space-x-3 mb-8">
-              <div className="relative"> 
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-[#E67E22] to-[#3C719D] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur"></div>
-              </div>
               <div className="relative">
                 <img 
                   src="/images/logo.png" 
@@ -344,7 +404,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Welcome Text */}
             <div className="py-2 relative">
               <div className="absolute -left-8 top-0 w-1 h-16 bg-gradient-to-b from-[#E67E22] to-transparent"></div>
               <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
@@ -361,7 +420,6 @@ export default function LoginPage() {
               </p> 
             </div>
 
-            {/* Features Grid */}
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 { icon: '🚚', title: 'Real-time tracking', desc: 'Live shipment updates' },
@@ -373,9 +431,7 @@ export default function LoginPage() {
                   key={index}
                   className="group relative bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 hover:border-[#E67E22]/30"
                 >
-                  {/* Hover Glow Effect */}
                   <div className="absolute inset-0 bg-gradient-to-r from-[#E67E22]/0 to-[#3C719D]/0 group-hover:from-[#E67E22]/10 group-hover:to-[#3C719D]/10 rounded-xl transition-all duration-300"></div>
-                  
                   <div className="relative z-10 flex items-start space-x-3">
                     <span className="text-2xl">{feature.icon}</span>
                     <div>
@@ -387,7 +443,6 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* Trust Indicators */}
             <div className="mt-12 flex items-center space-x-6 text-sm text-gray-400">
               <div className="flex items-center space-x-2">
                 <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -404,7 +459,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Decorative Bottom Wave */}
           <div className="absolute bottom-0 left-0 right-0">
             <svg className="w-full h-12 text-[#0a1a3a] opacity-20" fill="currentColor" viewBox="0 0 1440 320">
               <path d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,154.7C960,171,1056,181,1152,170.7C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
@@ -424,11 +478,9 @@ export default function LoginPage() {
               backgroundRepeat: 'no-repeat'
             }}
           >
-            {/* Dark Overlay for better readability */}
             <div className="absolute inset-0 bg-black bg-opacity-60"></div>
           </div>
           
-          {/* Optional: Pattern Overlay */}
           <div className="absolute inset-0 opacity-10 z-0">
             <div className="absolute top-0 -left-4 w-72 h-72 bg-[#E67E22] rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
             <div className="absolute top-0 -right-4 w-72 h-72 bg-[#3C719D] rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
@@ -503,7 +555,7 @@ export default function LoginPage() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 text-[#E67E22] border-gray-300 rounded focus:ring-[#E67E22]"
                   />
-                  <label htmlFor="remember" className="ml-2 text-sm text-secondary">
+                  <label htmlFor="remember" className="ml-2 text-sm text-white">
                     Remember me
                   </label>
                 </div>
@@ -527,6 +579,46 @@ export default function LoginPage() {
                 <svg className="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
+              </Button>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300/50"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-transparent text-gray-300">Or continue with</span>
+                </div>
+              </div>
+
+              {/* Google Login Button */}
+              <Button
+                type="button"
+                variant="google"
+                size="lg"
+                isLoading={googleLoading}
+                onClick={handleGoogleLogin}
+                className="w-full flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                {!googleLoading && "Continue with Google"}
               </Button>
             </form>
           </div>

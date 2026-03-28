@@ -1920,14 +1920,7 @@ export default function CustomerBookingsPage() {
               </div>
               <h3 className="mt-4 text-lg font-medium text-gray-900">No shipments found</h3>
               <p className="mt-1 text-sm text-gray-500">You haven't created any shipments yet.</p>
-              <Button
-                variant="primary"
-                onClick={() => router.push('/bookings/create')}
-                className="mt-4"
-                icon={<Plus className="h-4 w-4" />}
-              >
-                Create Your First Shipment
-              </Button>
+           
             </div>
           </div>
         ) : viewMode === 'grid' ? (

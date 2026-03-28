@@ -16,39 +16,82 @@ const Navbar = () => {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Check authentication status on mount and when localStorage changes
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = getAuthToken();
-      const userDetails = getUserDetails();
-      
-      setIsLoggedIn(!!token);
-      if (token && userDetails) {
-        setUser(userDetails);
-      } else {
-        setUser(null);
+  // Check authentication status - IMPROVED VERSION
+  const checkAuth = () => {
+    console.log('🔍 Navbar checking auth...');
+    
+    // Try to get token from multiple sources
+    let token = null;
+    let userData = null;
+    
+    // Check localStorage first (for Google login)
+    if (typeof window !== 'undefined') {
+      token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('user_details') || localStorage.getItem('user');
+      if (userStr) {
+        try {
+          userData = JSON.parse(userStr);
+          console.log('✅ User from localStorage:', userData.email);
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
       }
-    };
+    }
+    
+    // If not in localStorage, check cookies
+    if (!token) {
+      token = getAuthToken();
+      userData = getUserDetails();
+      if (userData) {
+        console.log('✅ User from cookies:', userData.email);
+      }
+    }
+    
+    const loggedIn = !!token;
+    
+    console.log('🔍 Auth status:', { loggedIn, hasUser: !!userData, tokenExists: !!token });
+    
+    setIsLoggedIn(loggedIn);
+    if (loggedIn && userData) {
+      setUser(userData);
+    } else {
+      setUser(null);
+    }
+    setIsLoading(false);
+  };
 
+  // Run on mount and when storage changes
+  useEffect(() => {
     checkAuth();
 
-    // Listen for storage events (in case user logs in/out in another tab)
-    const handleStorageChange = () => {
+    // Listen for storage events (when user logs in/out in another tab)
+    const handleStorageChange = (e) => {
+      console.log('🔄 Storage event detected:', e.key);
+      checkAuth();
+    };
+
+    // Custom event for login/logout within the same tab
+    const handleAuthChange = () => {
+      console.log('🔄 Auth change event detected');
       checkAuth();
     };
 
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('authChange', handleAuthChange);
     
-    // Custom event for login/logout within the same tab
-    window.addEventListener('authChange', handleStorageChange);
+    // Also check every 2 seconds for changes (fallback)
+    const interval = setInterval(checkAuth, 2000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('authChange', handleStorageChange);
+      window.removeEventListener('authChange', handleAuthChange);
+      clearInterval(interval);
     };
   }, []);
 
+  // Scroll effects
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -76,12 +119,23 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
+    
+    // Also clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_details');
+      localStorage.removeItem('user');
+    }
+    
     setIsLoggedIn(false);
     setUser(null);
     setIsMenuOpen(false);
     
     // Dispatch custom event for other components
     window.dispatchEvent(new Event('authChange'));
+    
+    // Redirect to home
+    router.push('/');
   };
 
   // Topbar visible থাকলে Navbar top-9, না থাকলে top-0
@@ -114,11 +168,6 @@ const Navbar = () => {
         { label: 'Industries Details', href: '/industries_deatils' }, 
       ]
     },
-    // {
-    //   label: 'Blog',
-    //   href: '#',
-    //   icon: <File className="w-4 h-4" />
-    // },
     {
       label: 'Services',
       href: '/service',
@@ -199,6 +248,35 @@ const Navbar = () => {
     </motion.div>
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={`fixed ${navbarTopPosition} left-0 right-0 z-[9999] bg-white py-4 shadow-sm w-full`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
+          <div className="flex items-center justify-between">
+            <div className="h-12 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="hidden lg:flex space-x-1">
+              <div className="h-10 w-20 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-10 w-20 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get display name for user
+  const getDisplayName = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`.trim().split(' ')[0];
+    }
+    if (user?.name) {
+      return user.name.split(' ')[0];
+    }
+    return 'Profile';
+  };
+
   return (
     <>
       <motion.nav
@@ -219,15 +297,15 @@ const Navbar = () => {
               whileHover={{ scale: 1.05 }} 
               className="flex items-center space-x-2 flex-shrink-0"
             >
-             <a href="/">
-               <div className="relative overflow-visible  rounded-lg p-1 ">
-                <img 
-                  src="/images/logo.png" 
-                  alt="Cargo Logistics Company" 
-                  className="h-12 w-auto " 
-                />
-              </div>
-             </a>
+              <a href="/">
+                <div className="relative overflow-visible rounded-lg p-1">
+                  <img 
+                    src="/images/logo.png" 
+                    alt="Cargo Logistics Company" 
+                    className="h-12 w-auto" 
+                  />
+                </div>
+              </a>
             </motion.div>
 
             {/* Desktop Navigation */}
@@ -335,7 +413,7 @@ const Navbar = () => {
                     >
                       <UserCircle className="w-4 h-4" />
                       <span className="max-w-[100px] truncate">
-                        {user?.name?.split(' ')[0] || user?.fullName?.split(' ')[0] || 'Profile'}
+                        {getDisplayName()}
                       </span>
                       <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${
                         activeDropdown === 'profile' ? 'rotate-180' : ''
@@ -443,11 +521,13 @@ const Navbar = () => {
                 <div className="bg-white rounded-xl shadow-xl border py-4">
                   <div className="space-y-1 px-3">
                     {/* Mobile User Info (if logged in) */}
-                    {isLoggedIn && (
+                    {isLoggedIn && user && (
                       <div className="px-4 py-3 bg-blue-50 rounded-lg mb-2">
                         <p className="text-sm text-gray-600">Logged in as</p>
-                        <p className="font-semibold text-gray-800">{user?.name || user?.fullName}</p>
-                        <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
+                        <p className="font-semibold text-gray-800">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">{user.email}</p>
                       </div>
                     )}
 

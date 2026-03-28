@@ -71,9 +71,8 @@ export const getInvoiceById = async (invoiceId) => {
 // Endpoint: GET /invoices/customer/:customerId
 export const getInvoicesByCustomer = async (customerId, params = {}) => {
   try {
+    // NO LIMIT - সব ইনভয়েস একসাথে আনবে
     const queryParams = new URLSearchParams({
-      page: params.page || 1,
-      limit: params.limit || 20,
       ...(params.status && { status: params.status })
     });
 
