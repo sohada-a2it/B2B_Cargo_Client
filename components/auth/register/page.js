@@ -163,19 +163,36 @@ export default function Page() {
   const [passwordStrength, setPasswordStrength] = useState(0);
   
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
-    companyName: '',
-    companyAddress: '',
-    companyVAT: '',
-    businessType: 'Trader',
-    industry: '',
-    acceptTerms: false
-  });
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  phone: '',
+  countryCode: '+1', // ডিফল্ট USA
+  companyName: '',
+  companyAddress: '',
+  companyVAT: '',
+  businessType: 'Trader',
+  industry: '',
+  acceptTerms: false
+});
+
+// কান্ট্রি কোডের অপশন
+const countryOptions = [
+  { code: '+1', name: 'USA/Canada', example: '+1 555 123 4567' },
+  { code: '+44', name: 'UK', example: '+44 20 7123 4567' },
+  { code: '+66', name: 'Thailand', example: '+66 2 123 4567' },
+  { code: '+86', name: 'China', example: '+86 10 1234 5678' }
+];
+
+// ফোন নম্বর হ্যান্ডেল করার ফাংশন আপডেট করুন
+const handlePhoneChange = (e) => {
+  const { value } = e.target;
+  // শুধু নাম্বার এবং + চিহ্ন অনুমোদিত
+  const cleaned = value.replace(/[^\d+]/g, '');
+  setFormData(prev => ({ ...prev, phone: cleaned }));
+};
 
   const [touched, setTouched] = useState({});
   const [errors, setErrors] = useState({});
@@ -399,440 +416,483 @@ export default function Page() {
         theme="colored"
       />
       
-      <div className="h-[540px] bg-[#fffaf6] flex flex-col lg:flex-row ">
-        {/* Left Side - Branding/Info */}
-        <div className="lg:w-1/2 bg-[#122652] p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 -left-4 w-72 h-72 bg-[#E67E22] rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-[#3C719D] rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-[#E67E22] rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
-          </div>
-
-          {/* Content */}
-          <div className="relative z-10">
-            <div className="flex items-center space-x-3 mb-8">
-      <div className="relative"> 
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#E67E22] to-[#3C719D] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur"></div>
-      </div>
-      <div className="relative">
-        <img 
-          src="/images/logo.png" 
-          alt="LogiSwift Logo" 
-          className="h-12 w-auto brightness-0 invert filter"
-        />
-        <div className="absolute -bottom-1 left-0 w-12 h-0.5 bg-gradient-to-r from-[#E67E22] to-transparent"></div>
-      </div>
+      <div className="h-[600px] bg-[#fffaf6] flex flex-col lg:flex-row overflow-hidden">
+  {/* Left Side - Branding/Info (compact padding) */}
+  <div className="lg:w-1/2 bg-[#122652] p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
+    {/* Background Pattern - unchanged */}
+    <div className="absolute inset-0 opacity-10">
+      <div className="absolute top-0 -left-4 w-72 h-72 bg-[#E67E22] rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+      <div className="absolute top-0 -right-4 w-72 h-72 bg-[#3C719D] rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+      <div className="absolute -bottom-8 left-20 w-72 h-72 bg-[#E67E22] rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
     </div>
 
-            <div className="mt-6">
-              <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
-                Your Global
-                <span className="text-[#E67E22] block">Logistics Partner</span>
-              </h1>
-              <p className="mt-6 text-gray-300 text-lg max-w-md">
-                Join thousands of businesses who trust us with their supply chain. 
-                Experience seamless shipping worldwide.
-              </p>
-            </div>
-
-            {/* Features */}
-            <div className="mt-12 space-y-4">
-              {[
-                'Real-time shipment tracking',
-                'Global network coverage',
-                '24/7 customer support',
-                'Competitive shipping rates'
-              ].map(function(feature, index) {
-                return (
-                  <div key={index} className="flex items-center space-x-3">
-                    <div className="flex-shrink-0 w-6 h-6 bg-[#E67E22] rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-gray-200">{feature}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div> 
+    {/* Content - reduced vertical gaps */}
+    <div className="relative z-10 mt-10">
+      <div className="flex items-center space-x-3 mb-5">
+        <div className="relative">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#E67E22] to-[#3C719D] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur"></div>
         </div>
-
-        {/* Right Side - Registration Form */}
-        <div className="lg:w-1/2 flex items-center justify-center p-8 lg:p-12">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-[#122652]">Create Account</h2>
-              <p className="text-gray-600 mt-2">
-                Already have an account?{' '}
-                <Link href="/auth/login" className="text-[#E67E22] font-semibold hover:underline">
-                  Sign in
-                </Link>
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Progress Bar */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-2">
-                  {[1, 2, 3].map(function(step) {
-                    return (
-                      <div key={step} className={'flex items-center ' + (step < 3 ? 'flex-1' : '')}>
-                        <div className={
-                          'w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ' +
-                          (currentStep >= step ? 'bg-[#E67E22] text-white' : 'bg-gray-200 text-gray-600')
-                        }>
-                          {step}
-                        </div>
-                        {step < 3 && (
-                          <div className={
-                            'flex-1 h-1 mx-2 rounded ' + 
-                            (currentStep > step ? 'bg-[#E67E22]' : 'bg-gray-200')
-                          } />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-between text-xs text-gray-600 px-1">
-                  <span>Personal</span>
-                  <span>Security</span>
-                  <span>Business</span>
-                </div>
-              </div>
-
-              {/* Step 1: Personal Information */}
-              {currentStep === 1 && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="First Name"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      onBlur={function() { handleBlur('firstName'); }}
-                      placeholder="John"
-                      error={touched.firstName && errors.firstName}
-                      required
-                      icon={renderIcon('user')}
-                    />
-                    <Input
-                      label="Last Name"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      onBlur={function() { handleBlur('lastName'); }}
-                      placeholder="Doe"
-                      error={touched.lastName && errors.lastName}
-                      required
-                    />
-                  </div>
-
-                  <Input
-                    label="Email Address"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    onBlur={function() { handleBlur('email'); }}
-                    placeholder="john.doe@company.com"
-                    error={touched.email && errors.email}
-                    required
-                    icon={renderIcon('email')}
-                  />
-
-                  <Input
-                    label="Phone Number"
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    onBlur={function() { handleBlur('phone'); }}
-                    placeholder="+880 1712 345678"
-                    error={touched.phone && errors.phone}
-                    required
-                    icon={renderIcon('phone')}
-                  />
-<Link
-                  href="/auth/forgot-password"
-                  className="text-sm text-[#E67E22] hover:underline font-medium"
-                >
-                  Forgot password?
-                </Link>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="lg"
-                    onClick={nextStep}
-                    className="w-full mt-6"
-                  >
-                    Continue to Security
-                    <svg className="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Button>
-                </div>
-              )}
-
-              {/* Step 2: Password Setup */}
-              {currentStep === 2 && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="relative">
-                    <Input
-                      label="Password"
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      onBlur={function() { handleBlur('password'); }}
-                      placeholder="********"
-                      error={touched.password && errors.password}
-                      required
-                      icon={renderIcon('password')}
-                    />
-                    <button
-                      type="button"
-                      onClick={function() { setShowPassword(!showPassword); }}
-                      className="absolute right-3 top-9 text-gray-500 hover:text-[#E67E22]"
-                    >
-                      {showPassword ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Password Strength Meter */}
-                  {formData.password && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={'h-full ' + getPasswordStrengthColor() + ' transition-all duration-300'}
-                            style={{ width: passwordStrength + '%' }}
-                          />
-                        </div>
-                        <span className="ml-3 text-sm font-medium text-gray-600">
-                          {getPasswordStrengthText()}
-                        </span>
-                      </div>
-                      <ul className="text-xs text-gray-500 space-y-1">
-                        <li className="flex items-center">
-                          <span className={'mr-2 ' + (formData.password.length >= 8 ? 'text-green-500' : 'text-gray-400')}>
-                            {formData.password.length >= 8 ? '✓' : '○'}
-                          </span>
-                          At least 8 characters
-                        </li>
-                        <li className="flex items-center">
-                          <span className={'mr-2 ' + (/([a-z])/.test(formData.password) ? 'text-green-500' : 'text-gray-400')}>
-                            {/([a-z])/.test(formData.password) ? '✓' : '○'}
-                          </span>
-                          Contains lowercase letter
-                        </li>
-                        <li className="flex items-center">
-                          <span className={'mr-2 ' + (/([A-Z])/.test(formData.password) ? 'text-green-500' : 'text-gray-400')}>
-                            {/([A-Z])/.test(formData.password) ? '✓' : '○'}
-                          </span>
-                          Contains uppercase letter
-                        </li>
-                        <li className="flex items-center">
-                          <span className={'mr-2 ' + (/([0-9!@#$%^&*])/.test(formData.password) ? 'text-green-500' : 'text-gray-400')}>
-                            {/([0-9!@#$%^&*])/.test(formData.password) ? '✓' : '○'}
-                          </span>
-                          Contains number or special character
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-
-                  <Input
-                    label="Confirm Password"
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    onBlur={function() { handleBlur('confirmPassword'); }}
-                    placeholder="********"
-                    error={touched.confirmPassword && errors.confirmPassword}
-                    required
-                  />
-
-                  <div className="flex space-x-4 mt-6">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={prevStep}
-                      className="flex-1"
-                    >
-                      <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Back
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="lg"
-                      onClick={nextStep}
-                      className="flex-1"
-                    >
-                      Continue
-                      <svg className="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Business Information */}
-              {currentStep === 3 && (
-                <div className="space-y-4 animate-fadeIn">
-                  <Input
-                    label="Company Name"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    onBlur={function() { handleBlur('companyName'); }}
-                    placeholder="Your Company Ltd."
-                    error={touched.companyName && errors.companyName}
-                    required
-                    icon={renderIcon('company')}
-                  />
-
-                  <Input
-                    label="Company Address"
-                    name="companyAddress"
-                    value={formData.companyAddress}
-                    onChange={handleChange}
-                    onBlur={function() { handleBlur('companyAddress'); }}
-                    placeholder="123 Business Ave, City, Country"
-                    error={touched.companyAddress && errors.companyAddress}
-                    required
-                  />
-
-                  <Input
-                    label="VAT Number"
-                    name="companyVAT"
-                    value={formData.companyVAT}
-                    onChange={handleChange}
-                    onBlur={function() { handleBlur('companyVAT'); }}
-                    placeholder="VAT-123456789"
-                    error={touched.companyVAT && errors.companyVAT}
-                    required
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Business Type <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="businessType"
-                        value={formData.businessType}
-                        onChange={handleChange}
-                        onBlur={function() { handleBlur('businessType'); }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E67E22] focus:border-[#E67E22]"
-                      >
-                        {businessTypes.map(function(type) {
-                          return (
-                            <option key={type} value={type}>{type}</option>
-                          );
-                        })}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Industry <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="industry"
-                        value={formData.industry}
-                        onChange={handleChange}
-                        onBlur={function() { handleBlur('industry'); }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E67E22] focus:border-[#E67E22]"
-                      >
-                        <option value="">Select Industry</option>
-                        {industries.map(function(industry) {
-                          return (
-                            <option key={industry} value={industry}>{industry}</option>
-                          );
-                        })}
-                      </select>
-                      {touched.industry && errors.industry && (
-                        <p className="text-sm text-red-600">{errors.industry}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 space-y-4">
-                    {/* Terms and Conditions */}
-                    <div className="flex items-start">
-                      <div className="flex items-center h-5">
-                        <input
-                          type="checkbox"
-                          name="acceptTerms"
-                          checked={formData.acceptTerms}
-                          onChange={handleChange}
-                          onBlur={function() { handleBlur('acceptTerms'); }}
-                          className="w-4 h-4 text-[#E67E22] border-gray-300 rounded focus:ring-[#E67E22]"
-                        />
-                      </div>
-                      <div className="ml-3 text-sm">
-                        <label className="font-medium text-gray-700">
-                          I agree to the{' '}
-                          <a href="#" className="text-[#E67E22] hover:underline">Terms of Service</a>
-                          {' '}and{' '}
-                          <a href="#" className="text-[#E67E22] hover:underline">Privacy Policy</a>
-                        </label>
-                        {touched.acceptTerms && errors.acceptTerms && (
-                          <p className="text-red-600 text-xs mt-1">{errors.acceptTerms}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-4 mt-8">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={prevStep}
-                      className="flex-1"
-                    >
-                      <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Back
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      isLoading={loading}
-                      className="flex-1"
-                    >
-                      Create Account
-                      <svg className="w-5 h-5 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </form>
-          </div>
+        <div className="relative">
+          <img 
+            src="/images/logo.png" 
+            alt="LogiSwift Logo" 
+            className="h-10 w-auto brightness-0 invert filter"
+          />
+          <div className="absolute -bottom-1 left-0 w-12 h-0.5 bg-gradient-to-r from-[#E67E22] to-transparent"></div>
         </div>
       </div>
+
+      <div className="mt-4">
+        <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight">
+          Your Global
+          <span className="text-[#E67E22] block">Logistics Partner</span>
+        </h1>
+        <p className="mt-4 text-gray-300 text-base max-w-md">
+          Join thousands of businesses who trust us with their supply chain. 
+          Experience seamless shipping worldwide.
+        </p>
+      </div>
+
+      {/* Features - compact spacing */}
+      <div className="mt-8 space-y-3">
+        {[
+          'Real-time shipment tracking',
+          'Global network coverage',
+          '24/7 customer support',
+          'Competitive shipping rates'
+        ].map(function(feature, index) {
+          return (
+            <div key={index} className="flex items-center space-x-3">
+              <div className="flex-shrink-0 w-5 h-5 bg-[#E67E22] rounded-full flex items-center justify-center">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <span className="text-gray-200 text-sm">{feature}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+
+  {/* Right Side - Registration Form (compact internal spacing) */}
+  <div className="lg:w-1/2 flex items-center justify-center p-6 lg:p-8">
+    <div className="w-full max-w-md">
+      <div className="text-center mb-5">
+        <h2 className="text-2xl font-bold text-[#122652]">Create Account</h2>
+        <p className="text-gray-600 text-sm mt-1">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="text-[#E67E22] font-semibold hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Progress Bar - slightly more compact */}
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-1">
+            {[1, 2, 3].map(function(step) {
+              return (
+                <div key={step} className={'flex items-center ' + (step < 3 ? 'flex-1' : '')}>
+                  <div className={
+                    'w-7 h-7 rounded-full flex items-center justify-center font-semibold text-xs ' +
+                    (currentStep >= step ? 'bg-[#E67E22] text-white' : 'bg-gray-200 text-gray-600')
+                  }>
+                    {step}
+                  </div>
+                  {step < 3 && (
+                    <div className={
+                      'flex-1 h-1 mx-2 rounded ' + 
+                      (currentStep > step ? 'bg-[#E67E22]' : 'bg-gray-200')
+                    } />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between text-[11px] text-gray-600 px-1">
+            <span>Personal</span>
+            <span>Security</span>
+            <span>Business</span>
+          </div>
+        </div>
+
+        {/* Step 1: Personal Information (compact fields) */}
+        {currentStep === 1 && (
+          <div className="space-y-3 animate-fadeIn">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="First Name"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                onBlur={function() { handleBlur('firstName'); }}
+                placeholder="John"
+                error={touched.firstName && errors.firstName}
+                required
+                icon={renderIcon('user')}
+              />
+              <Input
+                label="Last Name"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                onBlur={function() { handleBlur('lastName'); }}
+                placeholder="Doe"
+                error={touched.lastName && errors.lastName}
+                required
+              />
+            </div>
+
+            <Input
+              label="Email Address"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={function() { handleBlur('email'); }}
+              placeholder="john.doe@company.com"
+              error={touched.email && errors.email}
+              required
+              icon={renderIcon('email')}
+            />
+
+            <div className="space-y-1">
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Country <span className="text-red-500">*</span>
+  </label>
+  <select
+    name="countryCode"
+    value={formData.countryCode}
+    onChange={handleChange}
+    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E67E22] focus:border-[#E67E22]"
+  >
+    {countryOptions.map(country => (
+      <option key={country.code} value={country.code}>
+        {country.name} ({country.code})
+      </option>
+    ))}
+  </select>
+</div>
+
+<Input
+  label="Phone Number"
+  type="tel"
+  name="phone"
+  value={formData.phone}
+  onChange={handlePhoneChange}
+  onBlur={() => handleBlur('phone')}
+  placeholder={countryOptions.find(c => c.code === formData.countryCode)?.example || "Phone number"}
+  error={touched.phone && errors.phone}
+  required
+  icon={renderIcon('phone')}
+/> 
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-[#E67E22] hover:underline font-medium -mt-1 inline-block"
+            >
+              Forgot password?
+            </Link>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={nextStep}
+              className="w-full mt-4"
+            >
+              Continue to Security
+              <svg className="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </Button>
+          </div>
+        )}
+
+        {/* Step 2: Password Setup (compact) */}
+        {currentStep === 2 && (
+          <div className="space-y-3 animate-fadeIn">
+            <div className="relative">
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                onBlur={function() { handleBlur('password'); }}
+                placeholder="********"
+                error={touched.password && errors.password}
+                required
+                icon={renderIcon('password')}
+              />
+              <button
+                type="button"
+                onClick={function() { setShowPassword(!showPassword); }}
+                className="absolute right-3 top-9 text-gray-500 hover:text-[#E67E22]"
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            {/* Password Strength Meter */}
+            {formData.password && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={'h-full ' + getPasswordStrengthColor() + ' transition-all duration-300'}
+                      style={{ width: passwordStrength + '%' }}
+                    />
+                  </div>
+                  <span className="ml-3 text-xs font-medium text-gray-600">
+                    {getPasswordStrengthText()}
+                  </span>
+                </div>
+                <ul className="text-[11px] text-gray-500 space-y-0.5 grid grid-cols-2 gap-x-2">
+                  <li className="flex items-center">
+                    <span className={'mr-1.5 ' + (formData.password.length >= 8 ? 'text-green-500' : 'text-gray-400')}>
+                      {formData.password.length >= 8 ? '✓' : '○'}
+                    </span>
+                    ≥8 chars
+                  </li>
+                  <li className="flex items-center">
+                    <span className={'mr-1.5 ' + (/([a-z])/.test(formData.password) ? 'text-green-500' : 'text-gray-400')}>
+                      {/([a-z])/.test(formData.password) ? '✓' : '○'}
+                    </span>
+                    lowercase
+                  </li>
+                  <li className="flex items-center">
+                    <span className={'mr-1.5 ' + (/([A-Z])/.test(formData.password) ? 'text-green-500' : 'text-gray-400')}>
+                      {/([A-Z])/.test(formData.password) ? '✓' : '○'}
+                    </span>
+                    uppercase
+                  </li>
+                  <li className="flex items-center">
+                    <span className={'mr-1.5 ' + (/([0-9!@#$%^&*])/.test(formData.password) ? 'text-green-500' : 'text-gray-400')}>
+                      {/([0-9!@#$%^&*])/.test(formData.password) ? '✓' : '○'}
+                    </span>
+                    number/special
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <Input
+              label="Confirm Password"
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onBlur={function() { handleBlur('confirmPassword'); }}
+              placeholder="********"
+              error={touched.confirmPassword && errors.confirmPassword}
+              required
+            />
+
+            <div className="flex space-x-3 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={prevStep}
+                className="flex-1"
+              >
+                <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                onClick={nextStep}
+                className="flex-1"
+              >
+                Continue
+                <svg className="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Business Information (compact rows) */}
+        {currentStep === 3 && (
+          <div className="space-y-3 animate-fadeIn">
+            <Input
+              label="Company Name"
+              name="companyName"
+              value={formData.companyName}
+              onChange={handleChange}
+              onBlur={function() { handleBlur('companyName'); }}
+              placeholder="Your Company Ltd."
+              error={touched.companyName && errors.companyName}
+              required
+              icon={renderIcon('company')}
+            />
+
+            <Input
+              label="Company Address"
+              name="companyAddress"
+              value={formData.companyAddress}
+              onChange={handleChange}
+              onBlur={function() { handleBlur('companyAddress'); }}
+              placeholder="123 Business Ave, City, Country"
+              error={touched.companyAddress && errors.companyAddress}
+              required
+            />
+
+            <Input
+              label="VAT Number"
+              name="companyVAT"
+              value={formData.companyVAT}
+              onChange={handleChange}
+              onBlur={function() { handleBlur('companyVAT'); }}
+              placeholder="VAT-123456789"
+              error={touched.companyVAT && errors.companyVAT}
+              required
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-700">
+                  Business Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="businessType"
+                  value={formData.businessType}
+                  onChange={handleChange}
+                  onBlur={function() { handleBlur('businessType'); }}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E67E22] focus:border-[#E67E22]"
+                >
+                  {businessTypes.map(function(type) {
+                    return (
+                      <option key={type} value={type}>{type}</option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-700">
+                  Industry <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="industry"
+                  value={formData.industry}
+                  onChange={handleChange}
+                  onBlur={function() { handleBlur('industry'); }}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E67E22] focus:border-[#E67E22]"
+                >
+                  <option value="">Select Industry</option>
+                  {industries.map(function(industry) {
+                    return (
+                      <option key={industry} value={industry}>{industry}</option>
+                    );
+                  })}
+                </select>
+                {touched.industry && errors.industry && (
+                  <p className="text-xs text-red-600">{errors.industry}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {/* Terms and Conditions */}
+              <div className="flex items-start">
+                <div className="flex items-center h-4">
+                  <input
+                    type="checkbox"
+                    name="acceptTerms"
+                    checked={formData.acceptTerms}
+                    onChange={handleChange}
+                    onBlur={function() { handleBlur('acceptTerms'); }}
+                    className="w-3.5 h-3.5 text-[#E67E22] border-gray-300 rounded focus:ring-[#E67E22]"
+                  />
+                </div>
+                <div className="ml-2 text-xs">
+                  <label className="font-medium text-gray-700">
+                    I agree to the{' '}
+                    <a href="#" className="text-[#E67E22] hover:underline">Terms of Service</a>
+                    {' '}and{' '}
+                    <a href="#" className="text-[#E67E22] hover:underline">Privacy Policy</a>
+                  </label>
+                  {touched.acceptTerms && errors.acceptTerms && (
+                    <p className="text-red-600 text-[10px] mt-0.5">{errors.acceptTerms}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-5">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={prevStep}
+                className="flex-1"
+              >
+                <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                isLoading={loading}
+                className="flex-1"
+              >
+                Create Account
+                <svg className="w-4 h-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </Button>
+            </div>
+          </div>
+        )}
+      </form>
+    </div>
+  </div>
+</div>
+
+<style jsx>{`
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.25s ease-out forwards;
+  }
+  @keyframes blob {
+    0% { transform: translate(0px, 0px) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+`}</style>
 
       {/* Animation Styles */}
       <style jsx>{`

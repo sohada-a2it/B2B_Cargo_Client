@@ -6,7 +6,7 @@ import Cookies from 'js-cookie';
 // 1. GET ALL SHIPMENTS (with filters & pagination) 
 
 // ==================== SHIPMENT API FUNCTIONS ====================
-
+ 
 // 1. GET ALL SHIPMENTS (Admin/Staff) - বুকিংয়ের মতো
 export const getAllShipments = async (params = {}) => {
   try {
@@ -729,26 +729,35 @@ export const processWarehouse = async (shipmentId, processData) => {
 // };
 
 // 26. TRACK BY NUMBER (Public)
+// Api/shipping.js - trackShipmentByNumber ফাংশন চেক করুন
 export const trackShipmentByNumber = async (trackingNumber) => {
   try {
     const response = await axiosInstance.get(`/shipments/track/${trackingNumber}`);
     
     if (response.data.success) {
+      // Ensure timeline is properly formatted
+      const timeline = (response.data.data.timeline || []).map(event => ({
+        ...event,
+        status: event.status || event.type,
+        formattedDate: event.formattedDate || (event.timestamp ? new Date(event.timestamp).toLocaleString() : null)
+      }));
+      
       return {
         success: true,
-        data: response.data.data,
-        message: response.data.message
+        data: {
+          ...response.data.data,
+          timeline,
+          progress: response.data.data.progress || getProgressFromStatus(response.data.data.status)
+        }
       };
     }
     
-    throw new Error(response.data.message || 'Tracking number not found');
-    
+    throw new Error(response.data.message);
   } catch (error) {
     console.error('Track shipment error:', error);
     return {
       success: false,
-      message: error.response?.data?.error || error.message || 'Failed to track shipment',
-      error: error.response?.data
+      message: error.response?.data?.message || error.message
     };
   }
 };
@@ -937,26 +946,60 @@ export const getDaysInTransit = (departureDate) => {
 // ==================== SHIPMENT DASHBOARD FUNCTIONS ====================
 
 // Get shipment summary
-export const getShipmentSummary = (shipments) => {
-  if (!shipments || !shipments.length) {
-    return {
-      total: 0,
-      active: 0,
-      delivered: 0,
-      cancelled: 0,
-      pending: 0,
-      inTransit: 0
-    };
-  }
+// Api/shipping.js - getShipmentSummary ফাংশন আপডেট করুন
 
-  return {
-    total: shipments.length,
-    active: shipments.filter(s => isShipmentActive(s.status)).length,
-    delivered: shipments.filter(s => s.status === 'delivered').length,
-    cancelled: shipments.filter(s => s.status === 'cancelled').length,
-    pending: shipments.filter(s => s.status === 'pending').length,
-    inTransit: shipments.filter(s => s.status === 'in_transit').length
-  };
+export const getShipmentSummary = (shipments) => {
+    if (!shipments || !Array.isArray(shipments)) {
+        return {
+            total: 0,
+            active: 0,
+            delivered: 0,
+            pending: 0,
+            inTransit: 0
+        };
+    }
+
+    const summary = {
+        total: shipments.length,
+        active: 0,
+        delivered: 0,
+        pending: 0,
+        inTransit: 0,
+        onHold: 0,
+        cancelled: 0
+    };
+
+    shipments.forEach(shipment => {
+        const status = shipment.status || 'pending';
+        
+        // Count delivered/completed
+        if (status === 'delivered' || status === 'completed') {
+            summary.delivered++;
+        }
+        // Count in transit
+        else if (status === 'in_transit' || status === 'in_transit_sea_freight' || 
+                 status === 'departed_port_of_origin' || status === 'dispatched') {
+            summary.inTransit++;
+            summary.active++;
+        }
+        // Count pending
+        else if (status === 'pending' || status === 'received_at_warehouse' || 
+                 status === 'consolidated' || status === 'ready_for_dispatch') {
+            summary.pending++;
+            summary.active++;
+        }
+        // Count on hold
+        else if (status === 'on_hold') {
+            summary.onHold++;
+            summary.active++;
+        }
+        // Count active (all non-delivered/non-cancelled)
+        if (status !== 'delivered' && status !== 'completed' && status !== 'cancelled') {
+            summary.active++;
+        }
+    });
+
+    return summary;
 };
 
 // Group shipments by status
