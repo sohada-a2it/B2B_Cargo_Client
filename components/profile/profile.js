@@ -190,11 +190,10 @@ const ProfilePage = () => {
   };
 
   const sections = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'booking', label: 'My Bookings', icon: ClipboardList },
+    { id: 'profile', label: 'Profile', icon: User }, 
     { id: 'professional', label: user.role === 'customer' ? 'Business' : 'Professional', icon: user.role === 'customer' ? Building2 : Briefcase },
     { id: 'preferences', label: 'Preferences', icon: Settings },
-    { id: 'security', label: 'Security', icon: Shield }
+    // { id: 'security', label: 'Security', icon: Shield }
   ];
 
   return (

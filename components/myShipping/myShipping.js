@@ -1,4 +1,4 @@
-// components/myShipping/myShipping.js - সম্পূর্ণ আপডেটেড
+// components/myShipping/myShipping.js - সম্পূর্ণ আপডেটেড with Return Request
 
 'use client';
 
@@ -17,7 +17,15 @@ import {
   formatVolume,
   calculateTotalWeight,
   calculateTotalVolume,
-  getShipmentSummary
+  getShipmentSummary,
+  requestReturn,
+  getReturnRequestStatus,
+  canRequestReturn,
+  getReturnReasonText,
+  getReturnStatusText,
+  customerConfirmReturn,
+  customerRejectReturn,
+  formatReturnCost
 } from '@/Api/shipping';
 
 // Icons
@@ -33,7 +41,7 @@ import {
   CheckCircle as CheckCircleSolid,
   XCircle as XCircleSolid, Clock as ClockSolid,
   Send, Flag, Shield, Award, Pause, RotateCcw,
-  Layers, Train
+  Layers, Train, Undo2, MessageCircle, ThumbsUp, ThumbsDown,Info 
 } from 'lucide-react';
 
 // ==================== COLOR CONSTANTS ====================
@@ -179,7 +187,6 @@ const STATUS_CONFIG = {
     icon: RotateCcw,
     progress: 0
   },
-  
 };
 
 // ==================== SHIPMENT MODE CONFIG ====================
@@ -191,7 +198,8 @@ const SHIPMENT_MODE_CONFIG = {
   express_courier: { icon: Package, label: 'Express', color: COLORS.orange }
 };
 
-// ==================== BUTTON COMPONENT (FIXED) ====================
+// ==================== BUTTON COMPONENT ====================
+// Button Component - আপডেটেড ভার্সন
 const Button = ({ 
   children, 
   variant = 'primary', 
@@ -199,7 +207,7 @@ const Button = ({
   isLoading, 
   onClick, 
   className = '', 
-  icon: Icon,  // This should be a component, not JSX
+  icon: Icon,  // এটি একটি কম্পোনেন্ট হবে, JSX নয়
   disabled 
 }) => {
   const variants = {
@@ -219,6 +227,9 @@ const Button = ({
     lg: 'px-5 py-2.5 text-base'
   };
 
+  // Icon কম্পোনেন্ট চেক করুন
+  const IconComponent = Icon && typeof Icon === 'function' ? Icon : null;
+
   return (
     <button
       onClick={onClick}
@@ -232,7 +243,7 @@ const Button = ({
         </>
       ) : (
         <>
-          {Icon && <Icon className="h-4 w-4 mr-2" />}
+          {IconComponent && <IconComponent className="h-4 w-4 mr-2" />}
           {children}
         </>
       )}
@@ -241,7 +252,7 @@ const Button = ({
 };
 
 // ==================== INPUT COMPONENT ====================
-const Input = ({ type = 'text', label, value, onChange, placeholder, icon: Icon, error, required, className = '' }) => (
+const Input = ({ type = 'text', label, value, onChange, placeholder, icon: Icon, error, required, className = '', textarea = false }) => (
   <div className="space-y-1">
     {label && (
       <label className="block text-sm font-medium text-gray-700">
@@ -254,13 +265,23 @@ const Input = ({ type = 'text', label, value, onChange, placeholder, icon: Icon,
           <Icon className="h-4 w-4 text-gray-400" />
         </div>
       )}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[${COLORS.primary}] focus:border-transparent ${Icon ? 'pl-10' : ''} ${error ? 'border-red-300' : 'border-gray-300'} ${className}`}
-      />
+      {textarea ? (
+        <textarea
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          rows="3"
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[${COLORS.primary}] focus:border-transparent ${Icon ? 'pl-10' : ''} ${error ? 'border-red-300' : 'border-gray-300'} ${className}`}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[${COLORS.primary}] focus:border-transparent ${Icon ? 'pl-10' : ''} ${error ? 'border-red-300' : 'border-gray-300'} ${className}`}
+        />
+      )}
     </div>
     {error && <p className="text-xs text-red-500">{error}</p>}
   </div>
@@ -378,10 +399,33 @@ const ActionMenu = ({ shipment, onAction }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const canReturn = canRequestReturn(shipment);
+  const hasReturnRequest = shipment.returnRequest && shipment.returnRequest.status !== 'none';
+
   const actions = [
     { label: 'View Details', icon: Eye, action: 'view', color: 'text-blue-600' },
     { label: 'Track Shipment', icon: Navigation, action: 'track', color: 'text-green-600' },
   ];
+
+  if (canReturn && !hasReturnRequest) {
+    actions.push({ label: 'Request Return', icon: Undo2, action: 'return', color: 'text-orange-600' });
+  }
+
+  if (hasReturnRequest) {
+    const returnStatus = shipment.returnRequest?.status;
+    let returnLabel = 'Return Request';
+    if (returnStatus === 'pending') returnLabel = 'Return Pending';
+    else if (returnStatus === 'approved') returnLabel = 'Return Approved';
+    else if (returnStatus === 'completed') returnLabel = 'Return Completed';
+    else if (returnStatus === 'rejected') returnLabel = 'Return Rejected';
+    
+    actions.push({ 
+      label: returnLabel, 
+      icon: returnStatus === 'approved' ? ThumbsUp : returnStatus === 'rejected' ? ThumbsDown : Undo2, 
+      action: 'viewReturn', 
+      color: returnStatus === 'approved' ? 'text-green-600' : returnStatus === 'rejected' ? 'text-red-600' : 'text-orange-600' 
+    });
+  }
 
   return (
     <div className="relative" ref={menuRef}>
@@ -403,13 +447,21 @@ const ActionMenu = ({ shipment, onAction }) => {
 };
 
 // ==================== MODAL ====================
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   if (!isOpen) return null;
+  
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-2xl',
+    lg: 'max-w-4xl',
+    xl: 'max-w-6xl'
+  };
+  
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="fixed inset-0 bg-gray-500 opacity-75" onClick={onClose}></div>
-        <div className="relative bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className={`relative bg-white rounded-2xl ${sizes[size]} w-full max-h-[90vh] overflow-y-auto`}>
           <div className="px-6 py-4 border-b sticky top-0 bg-white flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
             <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
@@ -420,6 +472,576 @@ const Modal = ({ isOpen, onClose, title, children }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+// ==================== RETURN REQUEST MODAL ====================
+// ==================== RETURN REQUEST MODAL (Cost Preview সহ) ====================
+const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    reason: '',
+    description: '',
+    items: []
+  });
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [calculatedCost, setCalculatedCost] = useState(null);
+
+  const returnReasons = [
+    { value: 'damaged_product', label: 'Damaged Product', costNote: 'Free return - No cost to you' },
+    { value: 'wrong_product', label: 'Wrong Product Received', costNote: 'Free return - No cost to you' },
+    { value: 'missing_items', label: 'Missing Items', costNote: 'Free return - No cost to you' },
+    { value: 'delayed_delivery', label: 'Delayed Delivery', costNote: 'Free return - No cost to you' },
+    { value: 'customer_cancellation', label: 'Customer Cancellation', costNote: '15% restocking fee (minimum $50)' },
+    { value: 'other', label: 'Other Reason', costNote: 'Standard return charges apply (10% of product value)' }
+  ];
+
+  // Calculate cost preview based on selected reason
+  useEffect(() => {
+    if (formData.reason && shipment) {
+      const totalValue = shipment.packages?.reduce((sum, pkg) => {
+        return sum + ((pkg.value?.amount || 0) * (pkg.quantity || 1));
+      }, 0) || 0;
+
+      let cost = 0;
+      let isFree = false;
+      let breakdown = {};
+
+      switch (formData.reason) {
+        case 'damaged_product':
+        case 'wrong_product':
+        case 'missing_items':
+        case 'delayed_delivery':
+          isFree = true;
+          cost = 0;
+          breakdown = { note: 'No charges for this return reason' };
+          break;
+        case 'customer_cancellation':
+          cost = Math.max(50, totalValue * 0.15);
+          breakdown = {
+            shippingCost: 25,
+            handlingFee: 15,
+            restockingFee: Math.max(10, totalValue * 0.1),
+            total: cost,
+            note: 'Customer cancellation charges'
+          };
+          break;
+        default:
+          cost = Math.max(35, totalValue * 0.1);
+          breakdown = {
+            shippingCost: 20,
+            handlingFee: 10,
+            restockingFee: Math.max(5, totalValue * 0.05),
+            total: cost,
+            note: 'Standard return charges'
+          };
+          break;
+      }
+
+      setCalculatedCost({ amount: cost, isFree, breakdown, currency: 'USD' });
+    }
+  }, [formData.reason, shipment]);
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.reason) newErrors.reason = 'Please select a reason';
+    if (!formData.description) newErrors.description = 'Please provide details';
+    else if (formData.description.length < 10) newErrors.description = 'Please provide at least 10 characters';
+    return newErrors;
+  };
+
+  const handleSubmit = async () => {
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await requestReturn(shipment._id, {
+        reason: formData.reason,
+        description: formData.description,
+        items: formData.items
+      });
+
+      if (result.success) {
+        toast.success(result.message || 'Return request submitted successfully');
+        onSuccess?.();
+        onClose();
+      } else {
+        toast.error(result.message || 'Failed to submit return request');
+      }
+    } catch (error) {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const selectedReason = returnReasons.find(r => r.value === formData.reason);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Request Return" size="md">
+      <div className="space-y-5">
+        <div className="bg-orange-50 p-3 rounded-lg">
+          <p className="text-sm text-orange-700">
+            <AlertCircle className="h-4 w-4 inline mr-1" />
+            You have 14 days from delivery date to request a return.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Shipment #{shipment?.shipmentNumber || shipment?._id?.slice(-8)}
+          </label>
+          <p className="text-xs text-gray-500">
+            Delivered on: {formatShipmentDate(shipment?.dates?.delivered || shipment?.updatedAt, 'short')}
+          </p>
+        </div>
+
+        <Select
+          label="Return Reason"
+          value={formData.reason}
+          onChange={(e) => handleChange('reason', e.target.value)}
+          options={returnReasons}
+          placeholder="Select a reason"
+          required
+        />
+
+        {selectedReason && (
+          <div className="bg-blue-50 p-2 rounded-lg">
+            <p className="text-xs text-blue-700">
+              <Info className="h-3 w-3 inline mr-1" />
+              {selectedReason.costNote}
+            </p>
+          </div>
+        )}
+
+        {/* Cost Preview */}
+        {calculatedCost && formData.reason && (
+          <div className={`p-3 rounded-lg ${calculatedCost.isFree ? 'bg-green-50' : 'bg-yellow-50'}`}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Estimated Return Cost:</span>
+              <span className={`font-bold ${calculatedCost.isFree ? 'text-green-700' : 'text-yellow-700'}`}>
+                {calculatedCost.isFree ? 'FREE' : `${calculatedCost.currency} ${calculatedCost.amount.toFixed(2)}`}
+              </span>
+            </div>
+            {!calculatedCost.isFree && calculatedCost.breakdown && (
+              <div className="mt-2 text-xs text-gray-600">
+                <p>Breakdown:</p>
+                <ul className="list-disc list-inside ml-2">
+                  {calculatedCost.breakdown.shippingCost > 0 && <li>Shipping: ${calculatedCost.breakdown.shippingCost}</li>}
+                  {calculatedCost.breakdown.handlingFee > 0 && <li>Handling: ${calculatedCost.breakdown.handlingFee}</li>}
+                  {calculatedCost.breakdown.restockingFee > 0 && <li>Restocking: ${calculatedCost.breakdown.restockingFee}</li>}
+                </ul>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              *Final cost will be confirmed by admin upon approval
+            </p>
+          </div>
+        )}
+
+        <Input
+          label="Description"
+          value={formData.description}
+          onChange={(e) => handleChange('description', e.target.value)}
+          placeholder="Please describe the issue in detail..."
+          textarea
+          required
+          error={errors.description}
+        />
+
+        {shipment?.packages?.length > 1 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Items to Return (Optional)
+            </label>
+            <div className="space-y-2">
+              {shipment.packages.map((pkg, index) => (
+                <label key={index} className="flex items-center space-x-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={formData.items.includes(index)}
+                    onChange={(e) => {
+                      const newItems = e.target.checked
+                        ? [...formData.items, index]
+                        : formData.items.filter(i => i !== index);
+                      handleChange('items', newItems);
+                    }}
+                    className="rounded border-gray-300 text-[#E67E22] focus:ring-[#E67E22]"
+                  />
+                  <span>
+                    {pkg.packageType || 'Package'} #{index + 1}
+                    {pkg.description && ` - ${pkg.description}`}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end space-x-3 pt-4">
+          <Button variant="light" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={handleSubmit} isLoading={loading}>
+            Submit Return Request
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// ==================== RETURN STATUS MODAL ====================
+// ==================== RETURN STATUS & CONFIRM MODAL (আপডেটেড) ====================
+const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
+  const [returnStatus, setReturnStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && shipment) {
+      fetchReturnStatus();
+    }
+  }, [isOpen, shipment]);
+
+  const fetchReturnStatus = async () => {
+    setLoading(true);
+    try {
+      const result = await getReturnRequestStatus(shipment._id);
+      if (result.success) {
+        setReturnStatus(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch return status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmReturn = async () => {
+    setConfirmLoading(true);
+    try {
+      const result = await customerConfirmReturn(shipment._id, {
+        notes: 'I confirm the return with the associated cost',
+        acceptCost: true
+      });
+
+      if (result.success) {
+        toast.success(result.message || 'Return confirmed and completed successfully!');
+        onSuccess?.();
+        onClose();
+        setShowConfirmDialog(false);
+      } else {
+        toast.error(result.message || 'Failed to confirm return');
+      }
+    } catch (error) {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const handleRejectReturn = async () => {
+    if (!rejectReason.trim()) {
+      toast.warning('Please provide a reason for cancellation');
+      return;
+    }
+
+    setRejectLoading(true);
+    try {
+      const result = await customerRejectReturn(shipment._id, {
+        reason: rejectReason
+      });
+
+      if (result.success) {
+        toast.success(result.message || 'Return cancelled successfully');
+        onSuccess?.();
+        onClose();
+        setShowRejectDialog(false);
+        setRejectReason('');
+      } else {
+        toast.error(result.message || 'Failed to cancel return');
+      }
+    } catch (error) {
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setRejectLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const returnRequest = returnStatus?.returnRequest || shipment?.returnRequest;
+  
+  if (!returnRequest || returnRequest.status === 'none') {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Return Status" size="sm">
+        <div className="text-center py-8">
+          <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500">No return request found for this shipment.</p>
+        </div>
+      </Modal>
+    );
+  }
+
+  const returnCost = returnRequest.returnCost || 0;
+  const isFreeReturn = returnRequest.isFreeReturn || false;
+  const costBreakdown = returnRequest.returnCostBreakdown;
+
+  const statusConfig = {
+    pending: {
+      title: 'Pending Admin Approval',
+      description: 'Your return request has been submitted and is waiting for admin review.',
+      color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      icon: Clock,
+      actions: null
+    },
+    approved: {
+      title: 'Return Approved - Action Required',
+      description: 'Your return request has been approved. Please review the return cost below and confirm or cancel.',
+      color: 'bg-blue-50 text-blue-700 border-blue-200',
+      icon: ThumbsUp,
+      actions: 'confirm'
+    },
+    rejected_by_admin: {
+      title: 'Return Rejected',
+      description: `Your return request has been rejected. Reason: ${returnRequest.rejectionReason || 'Not specified'}`,
+      color: 'bg-red-50 text-red-700 border-red-200',
+      icon: ThumbsDown,
+      actions: null
+    },
+    rejected_by_customer: {
+      title: 'Return Cancelled',
+      description: `You have cancelled this return request. Reason: ${returnRequest.customerRejectionReason || 'Not specified'}`,
+      color: 'bg-orange-50 text-orange-700 border-orange-200',
+      icon: XCircle,
+      actions: null
+    },
+    completed: {
+      title: 'Return Completed',
+      description: 'Your return has been completed successfully.',
+      color: 'bg-green-50 text-green-700 border-green-200',
+      icon: CheckCircleSolid,
+      actions: null
+    }
+  };
+
+  const config = statusConfig[returnRequest.status] || statusConfig.pending;
+  const StatusIcon = config.icon;
+
+  return (
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title="Return Request Status" size="md">
+        <div className="space-y-5">
+          {/* Status Header */}
+          <div className={`p-4 rounded-lg border ${config.color}`}>
+            <div className="flex items-center space-x-3">
+              <StatusIcon className="h-6 w-6" />
+              <div>
+                <p className="font-semibold">{config.title}</p>
+                <p className="text-xs opacity-75">
+                  Requested on: {formatShipmentDate(returnRequest.requestedAt, 'long')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Return Details */}
+          <div className="border rounded-lg p-4">
+            <h5 className="text-sm font-medium mb-3">Return Details</h5>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-500">Reason</p>
+                <p className="text-sm font-medium">{getReturnReasonText(returnRequest.reason)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Description</p>
+                <p className="text-sm text-gray-600">{returnRequest.description}</p>
+              </div>
+              {returnRequest.returnTrackingNumber && (
+                <div>
+                  <p className="text-xs text-gray-500">Return Tracking Number</p>
+                  <p className="text-sm font-medium">{returnRequest.returnTrackingNumber}</p>
+                </div>
+              )}
+              {returnRequest.returnNotes && (
+                <div>
+                  <p className="text-xs text-gray-500">Admin Notes</p>
+                  <p className="text-sm text-gray-600">{returnRequest.returnNotes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Return Cost Section (for approved status) */}
+          {returnRequest.status === 'approved' && (
+            <div className="border rounded-lg p-4">
+              <h5 className="text-sm font-medium mb-3 flex items-center">
+                <DollarSign className="h-4 w-4 mr-2" style={{ color: COLORS.primary }} />
+                Return Cost Details
+              </h5>
+              
+              {isFreeReturn ? (
+                <div className="bg-green-50 p-3 rounded-lg text-center">
+                  <p className="text-green-700 font-semibold">FREE RETURN</p>
+                  <p className="text-xs text-green-600 mt-1">No charges apply for this return</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {costBreakdown && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Shipping Cost:</span>
+                          <span className="font-medium">${costBreakdown.shippingCost || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Handling Fee:</span>
+                          <span className="font-medium">${costBreakdown.handlingFee || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Restocking Fee:</span>
+                          <span className="font-medium">${costBreakdown.restockingFee || 0}</span>
+                        </div>
+                        <div className="border-t pt-2 mt-2">
+                          <div className="flex justify-between font-semibold">
+                            <span>Total Return Cost:</span>
+                            <span style={{ color: COLORS.primary }}>${returnCost} USD</span>
+                          </div>
+                        </div>
+                        {costBreakdown.note && (
+                          <p className="text-xs text-gray-500 mt-2">{costBreakdown.note}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!costBreakdown && (
+                    <div className="bg-blue-50 p-3 rounded-lg text-center">
+                      <p className="text-blue-700 font-semibold">Total Return Cost: ${returnCost} USD</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 flex space-x-3">
+                <Button 
+                  variant="success" 
+                  size="sm" 
+                  onClick={() => setShowConfirmDialog(true)}
+                  icon={<CheckCircle className="h-4 w-4" />}
+                  className="flex-1"
+                >
+                  Confirm Return
+                </Button>
+                <Button 
+                  variant="danger" 
+                  size="sm" 
+                  onClick={() => setShowRejectDialog(true)}
+                  icon={<XCircle className="h-4 w-4" />}
+                  className="flex-1"
+                >
+                  Cancel Return
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Description for other statuses */}
+          {returnRequest.status !== 'approved' && (
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">{config.description}</p>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button variant="primary" onClick={onClose}>Close</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirm Return Dialog */}
+      {showConfirmDialog && (
+        <Modal isOpen={showConfirmDialog} onClose={() => setShowConfirmDialog(false)} title="Confirm Return" size="sm">
+          <div className="space-y-4">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    Are you sure you want to confirm this return?
+                  </p>
+                  {!isFreeReturn && (
+                    <p className="text-xs text-yellow-700 mt-1">
+                      You will be charged ${returnCost} USD for this return.
+                    </p>
+                  )}
+                  <p className="text-xs text-yellow-700 mt-1">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button variant="ghost" onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
+              <Button variant="success" onClick={handleConfirmReturn} isLoading={confirmLoading}>
+                Yes, Confirm Return
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Reject/Cancel Return Dialog */}
+      {showRejectDialog && (
+        <Modal isOpen={showRejectDialog} onClose={() => setShowRejectDialog(false)} title="Cancel Return" size="md">
+          <div className="space-y-4">
+            <div className="bg-red-50 p-4 rounded-lg">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">
+                    Are you sure you want to cancel this return?
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">
+                    This action cannot be undone. You will need to submit a new return request if you change your mind.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <Input
+              label="Cancellation Reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Please tell us why you want to cancel the return..."
+              textarea
+              required
+            />
+
+            <div className="flex justify-end space-x-3">
+              <Button variant="ghost" onClick={() => setShowRejectDialog(false)}>Go Back</Button>
+              <Button variant="danger" onClick={handleRejectReturn} isLoading={rejectLoading}>
+                Yes, Cancel Return
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
   );
 };
 
@@ -481,7 +1103,7 @@ const ShipmentDetailsModal = ({ isOpen, onClose, shipment }) => {
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Shipment Details">
+    <Modal isOpen={isOpen} onClose={onClose} title="Shipment Details" size="lg">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -583,7 +1205,7 @@ const ShipmentDetailsModal = ({ isOpen, onClose, shipment }) => {
                             {pkg.dimensions?.length && pkg.dimensions?.width && pkg.dimensions?.height 
                               ? `${pkg.dimensions.length}×${pkg.dimensions.width}×${pkg.dimensions.height} cm`
                               : pkg.length && pkg.width && pkg.height ? `${pkg.length}×${pkg.width}×${pkg.height} cm` : 'N/A'}
-                           </td>
+                            </td>
                         </tr>
                       ))}
                     </tbody>
@@ -726,7 +1348,7 @@ const TrackingModal = ({ isOpen, onClose, trackingNumber }) => {
   const currentLocation = trackingData?.currentLocation || 'In Transit';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Track Shipment">
+    <Modal isOpen={isOpen} onClose={onClose} title="Track Shipment" size="md">
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin" style={{ color: COLORS.primary }} />
@@ -822,6 +1444,8 @@ export default function ShipmentsPage() {
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showReturnStatusModal, setShowReturnStatusModal] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [activeStat, setActiveStat] = useState('all');
 
@@ -907,6 +1531,12 @@ export default function ShipmentsPage() {
         } else {
           toast.warning('No tracking number available');
         }
+        break;
+      case 'return':
+        setShowReturnModal(true);
+        break;
+      case 'viewReturn':
+        setShowReturnStatusModal(true);
         break;
     }
   };
@@ -1100,6 +1730,7 @@ export default function ShipmentsPage() {
                   myShipments.map((shipment) => {
                     const totalWeight = calculateTotalWeight(shipment.packages);
                     const progress = getShipmentProgress(shipment.status);
+                    const hasReturnRequest = shipment.returnRequest && shipment.returnRequest.status !== 'none';
                     
                     return (
                       <tr key={shipment._id} className="hover:bg-gray-50 transition-colors">
@@ -1116,6 +1747,19 @@ export default function ShipmentsPage() {
                               <div className="text-xs text-gray-500 flex items-center mt-1">
                                 <Hash className="h-3 w-3 mr-1" />
                                 {shipment.trackingNumber}
+                              </div>
+                            )}
+                            {hasReturnRequest && (
+                              <div className="text-xs mt-1">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs ${
+                                  shipment.returnRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                  shipment.returnRequest.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                  shipment.returnRequest.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  <Undo2 className="h-2.5 w-2.5 mr-1" />
+                                  Return {shipment.returnRequest.status}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -1197,6 +1841,20 @@ export default function ShipmentsPage() {
         isOpen={showTrackingModal} 
         onClose={() => setShowTrackingModal(false)} 
         trackingNumber={trackingNumber} 
+      />
+
+      <ReturnRequestModal
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        shipment={selectedShipment}
+        onSuccess={fetchMyShipments}
+      />
+
+      <ReturnStatusModal
+        isOpen={showReturnStatusModal}
+        onClose={() => setShowReturnStatusModal(false)}
+        shipment={selectedShipment}
+        onSuccess={fetchMyShipments} 
       />
     </div>
   );

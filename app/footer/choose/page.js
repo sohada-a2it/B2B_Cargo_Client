@@ -53,7 +53,9 @@ export const metadata = {
 export default function Page() {
   return (
     <>
-      <WhyChooseUs />
+      <Suspense fallback={<LoadingFallback />}>
+      <WhyChooseUs /> 
+    </Suspense>
 
       {/* 🔹 Schema Markup for Why Choose Us Page */}
       <script

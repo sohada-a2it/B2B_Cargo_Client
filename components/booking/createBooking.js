@@ -1593,16 +1593,7 @@ export default function CreateBooking() {
                       />
 
                       <div className="col-span-2 grid grid-cols-2 gap-2"> 
-                        <Input
-                          label="Value"
-                          type="number"
-                          value={item.value.amount}
-                          onChange={(e) => handlePackageChange(index, 'value.amount', parseFloat(e.target.value) || 0)}
-                          icon={DollarSign}
-                          min="0"
-                          step="0.01"
-                          placeholder="Enter value"
-                        />
+                       
 
                         {/* Currency Display - Readonly */}
                         <div>

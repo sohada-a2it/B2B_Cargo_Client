@@ -445,7 +445,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className={`inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} w-full`}
+          className={` inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} w-full`}
         >
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -932,7 +932,7 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
             </h5>
             <div className="flex flex-wrap gap-2">
               {/* View Timeline Button */}
-              {hasTimeline && (
+              {/* {hasTimeline && (
                 <Button
                   size="sm"
                   variant="light"
@@ -944,10 +944,10 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
                 >
                   View Timeline
                 </Button>
-              )}
+              )} */}
 
               {/* View Invoice Button */}
-              {hasInvoice && (
+              {/* {hasInvoice && (
                 <Button
                   size="sm"
                   variant="light"
@@ -959,7 +959,7 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
                 >
                   View Invoice
                 </Button>
-              )}
+              )} */}
 
               {/* View Quote Button */}
               {hasQuote && (
@@ -1035,12 +1035,7 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
               )}
             </div>
           </div>
-        )}
-
-        {/* Progress Bar */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <ProgressBar progress={STATUS_CONFIG[booking.status]?.progress || 0} showLabel={true} />
-        </div>
+        )} 
 
         {/* Quote Expiry Warning */}
         {booking.pricingStatus === 'quoted' && booking.quotedPrice && (
@@ -1762,15 +1757,15 @@ export default function CustomerBookingsPage() {
     { key: 'booking_requested', label: 'Requested', value: stats.booking_requested, icon: Clock, color: 'bg-blue-100 text-blue-600' },
     { key: 'price_quoted', label: 'Price Quoted', value: stats.price_quoted, icon: Tag, color: 'bg-yellow-100 text-yellow-600' },
     { key: 'booking_confirmed', label: 'Confirmed', value: stats.booking_confirmed, icon: CheckCircle, color: 'bg-indigo-100 text-indigo-600' },
-    { key: 'in_transit', label: 'In Transit', value: stats.in_transit, icon: Truck, color: 'bg-cyan-100 text-cyan-600' },
-    { key: 'delivered', label: 'Delivered', value: stats.delivered, icon: CheckCircleSolid, color: 'bg-green-100 text-green-600' },
-    { key: 'cancelled', label: 'Cancelled', value: stats.cancelled, icon: XCircleSolid, color: 'bg-red-100 text-red-600' }
+    // { key: 'in_transit', label: 'In Transit', value: stats.in_transit, icon: Truck, color: 'bg-cyan-100 text-cyan-600' },
+    // { key: 'delivered', label: 'Delivered', value: stats.delivered, icon: CheckCircleSolid, color: 'bg-green-100 text-green-600' },
+    // { key: 'cancelled', label: 'Cancelled', value: stats.cancelled, icon: XCircleSolid, color: 'bg-red-100 text-red-600' }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
+      <div className="bg-white border-b shadow-sm  top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
@@ -1778,7 +1773,7 @@ export default function CustomerBookingsPage() {
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: COLORS.primaryLight }}>
                   <Package className="h-4 w-4" style={{ color: COLORS.primary }} />
                 </div>
-                <h1 className="ml-2 text-lg font-semibold text-gray-900">My Shipments</h1>
+                <h1 className="ml-2 text-lg font-semibold text-gray-900">My Bookings</h1>
               </div>
               <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
                 {stats.total} Total
