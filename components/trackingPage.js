@@ -392,7 +392,7 @@ const getCurrentLocation = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-orange-500 to-amber-600 text-white py-16">
         <div className="max-w-4xl mx-auto text-center px-4">

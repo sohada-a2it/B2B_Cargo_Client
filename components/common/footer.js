@@ -205,7 +205,7 @@ const footer = () => {
             <Link href="/footer/privacy-policy" className="text-gray-600 hover:text-[#FD5621] transition-colors">
               Privacy
             </Link>
-            <Link href="/terms-of-service" className="text-gray-600 hover:text-[#FD5621] transition-colors">
+            <Link href="/footer/terms" className="text-gray-600 hover:text-[#FD5621] transition-colors">
               Terms
             </Link>
           </div>

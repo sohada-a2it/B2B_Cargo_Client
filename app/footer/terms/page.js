@@ -1,48 +1,48 @@
-import PrivacyPolicy from "@/components/footer/policy";
+import TermsOfService from "@/components/footer/terms";
 import React from "react";
 
-// 🔹 SEO metadata for Privacy Policy
+// 🔹 SEO metadata for Terms of Service
 export const metadata = {
-  title: "Privacy Policy | Cargo Logistics Group",
+  title: "Terms of Service | Cargo Logistics Group",
   description:
-    "Read our Privacy Policy to understand how Cargo Logistics Group collects, uses, and protects your personal information. Learn about data security, your rights, and our commitment to privacy.",
+    "Read the Terms of Service for Cargo Logistics Group. Understand our legal framework for international freight forwarding, logistics management, and B2B operations across Thailand, China, USA, UK & Canada.",
   keywords: [
     "Cargo Logistics",
-    "Privacy Policy",
-    "Data Protection",
-    "Information Security",
-    "Privacy Statement",
-    "Data Privacy",
-    "GDPR Compliance",
-    "Personal Data",
-    "Cookie Policy",
-    "Privacy Rights",
+    "Terms of Service",
+    "Terms and Conditions",
+    "Legal Terms",
+    "Freight Forwarding Terms",
+    "Logistics Agreement",
+    "B2B Terms",
+    "Shipping Terms",
+    "Service Agreement",
+    "User Agreement",
   ],
   alternates: {
-    canonical: "https://client.cargologisticscompany.com/privacy-policy",
+    canonical: "https://client.cargologisticscompany.com/terms-of-service",
   },
   openGraph: {
-    title: "Privacy Policy | Cargo Logistics Group",
+    title: "Terms of Service | Cargo Logistics Group",
     description:
-      "Read our Privacy Policy to understand how Cargo Logistics Group collects, uses, and protects your personal information. Learn about data security and your privacy rights.",
-    url: "https://client.cargologisticscompany.com/privacy-policy",
+      "Read the Terms of Service for Cargo Logistics Group. Understand our legal framework for international freight forwarding, logistics management, and B2B operations.",
+    url: "https://client.cargologisticscompany.com/terms-of-service",
     siteName: "Cargo Logistics Group",
     images: [
       {
-        url: "/og-privacy-policy.jpg",
+        url: "/og-terms-of-service.jpg",
         width: 1200,
         height: 630,
-        alt: "Cargo Logistics Group - Privacy Policy",
+        alt: "Cargo Logistics Group - Terms of Service",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Privacy Policy | Cargo Logistics Group",
+    title: "Terms of Service | Cargo Logistics Group",
     description:
-      "Read our Privacy Policy to understand how Cargo Logistics Group collects, uses, and protects your personal information.",
-    images: ["/og-privacy-policy.jpg"],
+      "Read the Terms of Service for Cargo Logistics Group. Understand our legal framework for international freight forwarding.",
+    images: ["/og-terms-of-service.jpg"],
   },
   robots: {
     index: true,
@@ -53,19 +53,19 @@ export const metadata = {
 export default function Page() {
   return (
     <>
-      <PrivacyPolicy />
+      <TermsOfService />
 
-      {/* 🔹 Schema Markup for Privacy Policy Page */}
+      {/* 🔹 Schema Markup for Terms of Service Page */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebPage",
-            name: "Privacy Policy",
+            name: "Terms of Service",
             description:
-              "Read our Privacy Policy to understand how Cargo Logistics Group collects, uses, and protects your personal information. Learn about data security, your rights, and our commitment to privacy.",
-            url: "https://client.cargologisticscompany.com/privacy-policy",
+              "Read the Terms of Service for Cargo Logistics Group. Understand our legal framework for international freight forwarding, logistics management, and B2B operations across Thailand, China, USA, UK & Canada.",
+            url: "https://client.cargologisticscompany.com/terms-of-service",
             publisher: {
               "@type": "Organization",
               name: "Cargo Logistics Group",
@@ -74,15 +74,15 @@ export default function Page() {
             },
             mainEntity: {
               "@type": "WebPageElement",
-              name: "Privacy Policy Document",
-              description: "Comprehensive privacy policy outlining data collection, usage, and protection practices",
+              name: "Terms of Service Document",
+              description: "Legal terms and conditions for logistics services",
             },
-            dateModified: "2026-03-10",
+            dateModified: "2026-02-02",
           }),
         }}
       />
 
-      {/* 🔹 Breadcrumb Schema for Privacy Policy */}
+      {/* 🔹 Breadcrumb Schema for Terms of Service */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -99,8 +99,8 @@ export default function Page() {
               {
                 "@type": "ListItem",
                 position: 2,
-                name: "Privacy Policy",
-                item: "https://client.cargologisticscompany.com/privacy-policy",
+                name: "Terms of Service",
+                item: "https://client.cargologisticscompany.com/terms-of-service",
               },
             ],
           }),
@@ -129,37 +129,37 @@ export default function Page() {
             contactPoint: {
               "@type": "ContactPoint",
               telephone: "+1-647-362-7735",
-              contactType: "privacy",
-              email: "privacy@cargologisticscompany.com",
+              contactType: "legal",
+              email: "legal@cargologisticscompany.com",
               availableLanguage: ["English"],
             },
             legalName: "Cargo Logistics Group",
             foundingDate: "2009",
-            privacyPolicy: "https://client.cargologisticscompany.com/privacy-policy",
+            termsOfService: "https://client.cargologisticscompany.com/terms-of-service",
           }),
         }}
       />
 
-      {/* 🔹 Privacy Policy Schema (Legal Document) */}
+      {/* 🔹 Terms of Service Schema (Legal Document) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "PrivacyPolicy",
-            name: "Privacy Policy of Cargo Logistics Group",
+            "@type": "TermsOfService",
+            name: "Terms of Service of Cargo Logistics Group",
             description:
-              "This Privacy Policy describes how Cargo Logistics Group collects, uses, and protects personal information of its customers and website visitors.",
-            url: "https://client.cargologisticscompany.com/privacy-policy",
-            lastReviewed: "2026-03-10",
+              "These Terms of Service govern the use of Cargo Logistics Group's freight forwarding platform and logistics services.",
+            url: "https://client.cargologisticscompany.com/terms-of-service",
+            lastReviewed: "2026-02-02",
             inLanguage: "en-US",
             jurisdiction: "USA",
-            legislation: ["GDPR", "CCPA"],
+            applicableLegislation: ["UCC", "CISG"],
             contactPoint: {
               "@type": "ContactPoint",
               telephone: "+1-647-362-7735",
-              email: "privacy@cargologisticscompany.com",
-              contactType: "privacy officer",
+              email: "legal@cargologisticscompany.com",
+              contactType: "legal support",
             },
           }),
         }}

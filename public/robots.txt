@@ -1,0 +1,20 @@
+// app/robots.js
+export default function robots() {
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://client.cargologisticscompany.com' 
+    : 'http://localhost:3000';
+
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: [
+        '/auth/*',
+        '/profile',
+        '/api/*',
+        '/_next/*',
+      ],
+    },
+    sitemap: `${baseUrl}/sitemap.xml`,
+  };
+}
