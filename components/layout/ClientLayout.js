@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Navbar from "@/components/common/navbar";
 import Topbar from "@/components/common/topbar";
@@ -8,38 +8,46 @@ import Footer from "@/components/common/footer";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import PageTransition from "@/components/common/PageTransition";
 
-export default function ClientLayout({ children }) {
-  const [isLoading, setIsLoading] = useState(true);
+// Component that uses usePathname and useSearchParams
+function LayoutContent({ children }) {
   const [isNavigating, setIsNavigating] = useState(false);
   const navigationTimeoutRef = useRef(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  // Initial page load
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const lastPathRef = useRef(pathname);
+  const lastSearchRef = useRef(searchParams?.toString());
 
   // Navigation loading - clean up on route change
   useEffect(() => {
+    const currentPath = pathname;
+    const currentSearch = searchParams?.toString();
+    
+    // Check if navigation actually changed
+    const hasChanged = lastPathRef.current !== currentPath || 
+                       lastSearchRef.current !== currentSearch;
+    
+    // Update refs
+    lastPathRef.current = currentPath;
+    lastSearchRef.current = currentSearch;
+    
     // Clear any existing timeout
     if (navigationTimeoutRef.current) {
       clearTimeout(navigationTimeoutRef.current);
     }
-
-    setIsNavigating(true);
     
-    // Set new timeout
-    navigationTimeoutRef.current = setTimeout(() => {
+    // Only show loading if navigation actually changed
+    if (hasChanged) {
+      setIsNavigating(true);
+      
+      navigationTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(false);
+        navigationTimeoutRef.current = null;
+      }, 300);
+    } else {
+      // Same page - ensure loading is false
       setIsNavigating(false);
-      navigationTimeoutRef.current = null;
-    }, 300);
+    }
 
-    // Cleanup on unmount or before next effect
     return () => {
       if (navigationTimeoutRef.current) {
         clearTimeout(navigationTimeoutRef.current);
@@ -52,24 +60,34 @@ export default function ClientLayout({ children }) {
   useEffect(() => {
     let clickTimeout = null;
     let lastClickTime = 0;
+    let lastClickedUrl = null;
 
     const handleClick = (e) => {
       const link = e.target.closest('a');
       if (!link) return;
 
-      // Skip if already navigating
+      const currentUrl = window.location.pathname + window.location.search;
+      const targetUrl = link.pathname + link.search;
+      
+      // If clicking the same page, prevent loading state
+      if (targetUrl === currentUrl) {
+        e.preventDefault();
+        return;
+      }
+
       if (isNavigating) {
         e.preventDefault();
         return;
       }
 
-      // Prevent multiple rapid clicks
+      // Prevent multiple rapid clicks on same link
       const now = Date.now();
-      if (now - lastClickTime < 500) {
+      if (now - lastClickTime < 500 && lastClickedUrl === targetUrl) {
         e.preventDefault();
         return;
       }
       lastClickTime = now;
+      lastClickedUrl = targetUrl;
 
       if (link.href && !link.target && !e.ctrlKey && !e.metaKey) {
         const isSameOrigin = link.origin === window.location.origin;
@@ -77,17 +95,14 @@ export default function ClientLayout({ children }) {
         const isNextLink = link.closest('[data-next-link]');
         
         if (isSameOrigin && !isHash && !isNextLink) {
-          e.preventDefault(); // Prevent default navigation temporarily
+          e.preventDefault();
           
-          // Clear any existing timeout
           if (clickTimeout) {
             clearTimeout(clickTimeout);
           }
           
-          // Set navigating state
           setIsNavigating(true);
           
-          // Navigate after a tiny delay
           clickTimeout = setTimeout(() => {
             window.location.href = link.href;
           }, 100);
@@ -104,24 +119,9 @@ export default function ClientLayout({ children }) {
     };
   }, [isNavigating]);
 
-  // Show initial loading
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <TopbarSkeleton />
-        <NavbarSkeleton />
-        <ContentSkeleton />
-        <FooterSkeleton />
-      </div>
-    );
-  }
-
   return (
     <>
-      {/* Global navigation spinner */}
       {isNavigating && <LoadingSpinner fullScreen />}
-      
-      {/* Page transition wrapper */}
       <PageTransition>
         <div className="flex flex-col min-h-screen">
           <Topbar />
@@ -136,7 +136,43 @@ export default function ClientLayout({ children }) {
   );
 }
 
-// Skeleton Components (unchanged)
+// Main ClientLayout component with Suspense boundary
+export default function ClientLayout({ children }) {
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initial page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 200); // Reduced from 500ms to 200ms for better performance
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show initial loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <TopbarSkeleton />
+        <NavbarSkeleton />
+        <ContentSkeleton />
+        <FooterSkeleton />
+      </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E67E22]"></div>
+      </div>
+    }>
+      <LayoutContent>{children}</LayoutContent>
+    </Suspense>
+  );
+}
+
+// Skeleton Components (keep them as they are)
 function TopbarSkeleton() {
   return (
     <div className="w-full bg-gradient-to-r from-[#E67E22] to-[#3C719D] h-10 animate-pulse"></div>
@@ -167,17 +203,14 @@ function ContentSkeleton() {
   return (
     <div className="flex-1 container mx-auto px-4 py-8">
       <div className="max-w-7xl mx-auto">
-        {/* Breadcrumb */}
         <div className="flex items-center space-x-2 mb-6">
           <div className="w-16 h-4 bg-gray-200 rounded animate-pulse"></div>
           <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
           <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
         </div>
 
-        {/* Title */}
         <div className="w-64 h-8 bg-gray-200 rounded animate-pulse mb-6"></div>
 
-        {/* Content Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="bg-white rounded-lg shadow-sm p-6">

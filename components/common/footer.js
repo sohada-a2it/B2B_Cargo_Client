@@ -97,7 +97,7 @@ const footer = () => {
   ];
 
   return (
-    <footer className="bg-secondary text-third relative overflow-hidden -z-10"> 
+    <footer className="bg-secondary text-third relative overflow-hidden -z-8"> 
 
       {/* Main Footer */}
       <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 lg:py-6">
