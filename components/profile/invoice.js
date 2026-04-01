@@ -102,11 +102,11 @@ const getStatusTextPDF = (paymentStatus) => {
 // PDF Component
 const InvoicePDF = ({ invoice, companyInfo }) => {
   const defaultCompany = {
-    name: 'B2B Logistics Group',
-    address: '123 Business Avenue, Commercial Area',
-    city: 'Dhaka, Bangladesh 1212',
-    phone: '+880 1234-567890',
-    email: 'info@b2blogistics.com'
+     name: 'B2B Logistics Group',
+    address: '8825 STANFORD BLVD, SUITE 306, COLUMBIA, MD 21045, ',
+    city: 'USA',
+    phone: '+1-647-362-7735',
+    email: 'info@cargologisticscompany.com'
   };
   const info = companyInfo || defaultCompany;
 

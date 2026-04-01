@@ -412,7 +412,7 @@ const getCurrentLocation = () => {
               type="text"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value.toUpperCase())}
-              placeholder="Enter tracking number (e.g., CLC-BC6944CD)"
+              placeholder="Enter tracking number (e.g., CLG-BC6944CD)"
               className="w-full px-3 py-4 focus:outline-none"
               disabled={loading}
             />
@@ -695,10 +695,10 @@ const getCurrentLocation = () => {
                               <p className="text-xs text-gray-500">Volume</p>
                               <p className="font-medium">{pkg.volume || 0} m³</p>
                             </div>
-                            <div>
+                            {/* <div>
                               <p className="text-xs text-gray-500">Dimensions</p>
                               <p className="font-medium text-xs">{pkg.dimensions || 'N/A'}</p>
-                            </div>
+                            </div> */}
                           </div>
                         </div>
                       ))}

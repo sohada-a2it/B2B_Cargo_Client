@@ -180,13 +180,13 @@ const Button = ({ children, type = 'button', variant = 'primary', size = 'md', i
   const baseClasses = 'rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center';
   
   const variants = {
-    primary: `bg-[${COLORS.primary}] text-white hover:bg-[#d35400] focus:ring-[${COLORS.primary}] shadow-sm`,
-    secondary: `bg-[${COLORS.secondary}] text-white hover:bg-[#2c5a8c] focus:ring-[${COLORS.secondary}]`,
-    outline: `border-2 border-[${COLORS.primary}] text-[${COLORS.primary}] hover:bg-[${COLORS.primaryLight}] focus:ring-[${COLORS.primary}]`,
-    light: `bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500`,
-    success: `bg-[${COLORS.success}] text-white hover:bg-[#0d9488] focus:ring-[${COLORS.success}]`,
-    danger: `bg-[${COLORS.danger}] text-white hover:bg-[#dc2626] focus:ring-[${COLORS.danger}]`,
-    warning: `bg-[${COLORS.warning}] text-white hover:bg-[#d97706] focus:ring-[${COLORS.warning}]`,
+    primary: 'bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-500 shadow-sm',
+    secondary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-600',
+    outline: 'border-2 border-orange-500 text-orange-500 hover:bg-orange-50 focus:ring-orange-500',
+    light: 'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500',
+    success: 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-500',
+    danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500',
+    warning: 'bg-yellow-500 text-white hover:bg-yellow-600 focus:ring-yellow-500',
     ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-500'
   };
 
@@ -327,14 +327,14 @@ const StatusBadge = ({ status, size = 'md' }) => {
   );
 };
 
-// Pricing Status Badge
+// Pricing Status Badge - UPDATED with expired style
 const PricingStatusBadge = ({ status }) => {
   const colors = {
     pending: 'bg-gray-50 text-gray-700 border-gray-200',
     quoted: 'bg-yellow-50 text-yellow-700 border-yellow-200',
     accepted: 'bg-green-50 text-green-700 border-green-200',
     rejected: 'bg-red-50 text-red-700 border-red-200',
-    expired: 'bg-gray-50 text-gray-700 border-gray-200'
+    expired: 'bg-red-50 text-red-700 border-red-200'
   };
 
   const icons = {
@@ -350,7 +350,7 @@ const PricingStatusBadge = ({ status }) => {
   return (
     <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${colors[status] || colors.pending}`}>
       <Icon className="h-3 w-3 mr-1" />
-      {getPricingStatusDisplayText(status)}
+      {status === 'expired' ? 'Expired' : getPricingStatusDisplayText(status)}
     </span>
   );
 };
@@ -434,10 +434,6 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   return (
     <div className="fixed inset-0 z-90 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* <div className="fixed inset-0 transition-opacity" onClick={onClose}>
-          <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div> */}
-
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
         <motion.div
@@ -751,7 +747,7 @@ const QuoteResponseModal = ({ isOpen, onClose, booking, type, onRespond }) => {
   return (
     <Modal isOpen={isOpen} onClose={() => onClose(false)} title={type === 'accept' ? 'Accept Quote' : 'Reject Quote'} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className={`p-4 rounded-lg ${type === 'accept' ? 'bg-green-50' : 'bg-red-50'}`}>
+        <div className={`p-4 rounded-lg ${type === 'accept' ? 'bg-green-500' : 'bg-red-500'}`}>
           <div className="flex items-start">
             {type === 'accept' ? (
               <CheckCircle className="h-5 w-5 text-green-600 mr-3 flex-shrink-0 mt-0.5" />
@@ -877,32 +873,50 @@ const CancelModal = ({ isOpen, onClose, booking, onCancel }) => {
   );
 };
 
-// Booking Details Modal with Action Buttons
+// Booking Details Modal with Action Buttons - UPDATED with real-time status
 const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
   const [activeTab, setActiveTab] = useState('details');
   
   if (!isOpen || !booking) return null;
 
   const packageTotals = calculatePackageTotals(booking.shipmentDetails?.packageDetails || []);
-  const quoteValid = booking.quotedPrice ? isQuoteValid(booking.quotedPrice) : false;
-  const daysRemaining = booking.quotedPrice ? getQuoteDaysRemaining(booking.quotedPrice.validUntil) : 0;
+  
+  // Real-time quote validity check
+  const quoteValid = (() => {
+    if (!booking.quotedPrice || !booking.quotedPrice.validUntil) return false;
+    const now = new Date();
+    const validUntil = new Date(booking.quotedPrice.validUntil);
+    return now <= validUntil;
+  })();
+  
+  const daysRemaining = (() => {
+    if (!booking.quotedPrice || !booking.quotedPrice.validUntil) return 0;
+    const now = new Date();
+    const validUntil = new Date(booking.quotedPrice.validUntil);
+    const diffTime = validUntil - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  })();
+  
+  // Real-time pricing status
+  const actualPricingStatus = (() => {
+    if (!booking.quotedPrice) return booking.pricingStatus;
+    if (booking.pricingStatus === 'quoted') {
+      return quoteValid ? 'quoted' : 'expired';
+    }
+    return booking.pricingStatus;
+  })();
 
   // Check if quote actions are available
-  const canAcceptReject = booking.pricingStatus === 'quoted' && 
+  const canAcceptReject = actualPricingStatus === 'quoted' && 
                           quoteValid && 
                           booking.status === 'price_quoted';
 
   // Check if cancel is available
   const canCancel = canCancelBooking(booking.status);
 
-  // Check if timeline is available
-  const hasTimeline = true;
-
-  // Check if invoice is available
-  const hasInvoice = booking.invoiceId || booking.pricingStatus === 'accepted';
-
   // Check if quote details are available
-  const hasQuote = booking.quotedPrice && booking.pricingStatus === 'quoted';
+  const hasQuote = booking.quotedPrice && actualPricingStatus === 'quoted';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Booking Details" size="xl">
@@ -919,48 +933,18 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
           </div>
           <div className="flex flex-col items-end space-y-2">
             <StatusBadge status={booking.status} size="lg" />
-            <PricingStatusBadge status={booking.pricingStatus} />
+            <PricingStatusBadge status={actualPricingStatus} />
           </div>
         </div>
 
         {/* Action Buttons Section */}
-        {(canAcceptReject || canCancel || hasTimeline || hasInvoice || hasQuote) && (
+        {(canAcceptReject || canCancel || hasQuote) && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200">
             <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
               <Activity className="h-4 w-4 mr-2" style={{ color: COLORS.primary }} />
               Available Actions
             </h5>
             <div className="flex flex-wrap gap-2">
-              {/* View Timeline Button */}
-              {/* {hasTimeline && (
-                <Button
-                  size="sm"
-                  variant="light"
-                  onClick={() => {
-                    onClose();
-                    onAction('timeline', booking);
-                  }}
-                  icon={<Clock className="h-4 w-4" />}
-                >
-                  View Timeline
-                </Button>
-              )} */}
-
-              {/* View Invoice Button */}
-              {/* {hasInvoice && (
-                <Button
-                  size="sm"
-                  variant="light"
-                  onClick={() => {
-                    onClose();
-                    onAction('invoice', booking);
-                  }}
-                  icon={<Receipt className="h-4 w-4" />}
-                >
-                  View Invoice
-                </Button>
-              )} */}
-
               {/* View Quote Button */}
               {hasQuote && (
                 <Button
@@ -1038,7 +1022,7 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
         )} 
 
         {/* Quote Expiry Warning */}
-        {booking.pricingStatus === 'quoted' && booking.quotedPrice && (
+        {actualPricingStatus === 'quoted' && booking.quotedPrice && (
           <div className={`p-3 rounded-lg ${quoteValid ? 'bg-green-50' : 'bg-red-50'}`}>
             <div className="flex items-center">
               {quoteValid ? (
@@ -1048,7 +1032,7 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
               )}
               <span className={`text-xs ${quoteValid ? 'text-green-700' : 'text-red-700'}`}>
                 {quoteValid 
-                  ? `Quote valid for ${daysRemaining} more days` 
+                  ? `Quote valid for ${daysRemaining} more day${daysRemaining !== 1 ? 's' : ''}` 
                   : 'Quote has expired'}
               </span>
             </div>
@@ -1244,7 +1228,7 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
                     <div className="mt-2">
                       {quoteValid ? (
                         <span className="text-xs text-green-600">
-                          Valid for {daysRemaining} more days
+                          Valid for {daysRemaining} more day{daysRemaining !== 1 ? 's' : ''}
                         </span>
                       ) : (
                         <span className="text-xs text-red-600">Quote expired</span>
@@ -1349,10 +1333,26 @@ const BookingDetailsModal = ({ isOpen, onClose, booking, onAction }) => {
   );
 };
 
-// Booking Card Component
+// Booking Card Component - UPDATED with real-time status
 const BookingCard = ({ booking, onView, onAction }) => {
   const packageTotals = calculatePackageTotals(booking.shipmentDetails?.packageDetails || []);
-  const quoteValid = booking.quotedPrice ? isQuoteValid(booking.quotedPrice) : false;
+  
+  // Real-time quote validity check
+  const quoteValid = (() => {
+    if (!booking.quotedPrice || !booking.quotedPrice.validUntil) return false;
+    const now = new Date();
+    const validUntil = new Date(booking.quotedPrice.validUntil);
+    return now <= validUntil;
+  })();
+  
+  // Real-time pricing status
+  const actualPricingStatus = (() => {
+    if (!booking.quotedPrice) return booking.pricingStatus;
+    if (booking.pricingStatus === 'quoted') {
+      return quoteValid ? 'quoted' : 'expired';
+    }
+    return booking.pricingStatus;
+  })();
 
   return (
     <motion.div
@@ -1394,10 +1394,10 @@ const BookingCard = ({ booking, onView, onAction }) => {
 
         {/* Details Grid */}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <div>
+          {/* <div>
             <p className="text-xs text-gray-500">Type</p>
             <ShipmentTypeBadge type={booking.shipmentDetails?.shipmentType} />
-          </div>
+          </div> */}
           <div>
             <p className="text-xs text-gray-500">Created</p>
             <p className="text-xs font-medium">{formatDate(booking.createdAt, 'short')}</p>
@@ -1420,13 +1420,13 @@ const BookingCard = ({ booking, onView, onAction }) => {
           </div>
         </div>
 
-        {/* Status */}
+        {/* Status - Using real-time status */}
         <div className="flex items-center justify-between pt-2 border-t">
           <StatusBadge status={booking.status} size="sm" />
-          <PricingStatusBadge status={booking.pricingStatus} />
+          <PricingStatusBadge status={actualPricingStatus} />
         </div>
 
-        {/* Quick Action Buttons */}
+        {/* Quick Action Buttons - Using real-time status */}
         <div className="mt-3 flex space-x-2">
           <Button
             size="xs"
@@ -1437,7 +1437,7 @@ const BookingCard = ({ booking, onView, onAction }) => {
           >
             Details
           </Button>
-          {booking.pricingStatus === 'quoted' && quoteValid && booking.status === 'price_quoted' && (
+          {actualPricingStatus === 'quoted' && quoteValid && booking.status === 'price_quoted' && (
             <>
               <Button
                 size="xs"
@@ -1555,33 +1555,43 @@ export default function CustomerBookingsPage() {
           limit: 10,
           pages: 1
         });
-
-        // Calculate stats
-        const newStats = {
-          total: response.data?.length || 0,
-          booking_requested: 0,
-          price_quoted: 0,
-          booking_confirmed: 0,
-          in_transit: 0,
-          delivered: 0,
-          cancelled: 0
-        };
-
+        
+        // Update stats
         if (response.data && response.data.length > 0) {
+          const newStats = {
+            total: response.data.length,
+            booking_requested: 0,
+            price_quoted: 0,
+            booking_confirmed: 0,
+            in_transit: 0,
+            delivered: 0,
+            cancelled: 0
+          };
+          
           response.data.forEach(booking => {
-            if (newStats.hasOwnProperty(booking.status)) {
-              newStats[booking.status]++;
+            // Check real-time status for price_quoted
+            let status = booking.status;
+            if (booking.status === 'price_quoted' && booking.quotedPrice) {
+              const now = new Date();
+              const validUntil = new Date(booking.quotedPrice.validUntil);
+              if (now > validUntil) {
+                status = 'expired';
+              }
             }
-            if (booking.status === 'in_transit' || 
-                booking.status === 'arrived_at_destination' || 
-                booking.status === 'customs_clearance' || 
-                booking.status === 'out_for_delivery') {
+            
+            if (newStats.hasOwnProperty(status)) {
+              newStats[status]++;
+            }
+            if (status === 'in_transit' || 
+                status === 'arrived_at_destination' || 
+                status === 'customs_clearance' || 
+                status === 'out_for_delivery') {
               newStats.in_transit++;
             }
           });
+          
+          setStats(newStats);
         }
-
-        setStats(newStats);
       } else {
         toast.error(response.message || 'Failed to fetch bookings');
       }
@@ -1757,15 +1767,12 @@ export default function CustomerBookingsPage() {
     { key: 'booking_requested', label: 'Requested', value: stats.booking_requested, icon: Clock, color: 'bg-blue-100 text-blue-600' },
     { key: 'price_quoted', label: 'Price Quoted', value: stats.price_quoted, icon: Tag, color: 'bg-yellow-100 text-yellow-600' },
     { key: 'booking_confirmed', label: 'Confirmed', value: stats.booking_confirmed, icon: CheckCircle, color: 'bg-indigo-100 text-indigo-600' },
-    // { key: 'in_transit', label: 'In Transit', value: stats.in_transit, icon: Truck, color: 'bg-cyan-100 text-cyan-600' },
-    // { key: 'delivered', label: 'Delivered', value: stats.delivered, icon: CheckCircleSolid, color: 'bg-green-100 text-green-600' },
-    // { key: 'cancelled', label: 'Cancelled', value: stats.cancelled, icon: XCircleSolid, color: 'bg-red-100 text-red-600' }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b shadow-sm  top-0 z-10">
+      <div className="bg-white border-b shadow-sm top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
@@ -1800,7 +1807,7 @@ export default function CustomerBookingsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => router.push('/bookings/create')}
+                onClick={() => router.push('/Bookings/create_bookings')}
                 icon={<Plus className="h-4 w-4" />}
               >
                 New Booking
@@ -1915,7 +1922,6 @@ export default function CustomerBookingsPage() {
               </div>
               <h3 className="mt-4 text-lg font-medium text-gray-900">No shipments found</h3>
               <p className="mt-1 text-sm text-gray-500">You haven't created any shipments yet.</p>
-           
             </div>
           </div>
         ) : viewMode === 'grid' ? (
@@ -1947,7 +1953,21 @@ export default function CustomerBookingsPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {bookings.map((booking) => {
-                  const quoteValid = booking.quotedPrice ? isQuoteValid(booking.quotedPrice) : false;
+                  // Real-time quote validity check for list view
+                  const quoteValid = (() => {
+                    if (!booking.quotedPrice || !booking.quotedPrice.validUntil) return false;
+                    const now = new Date();
+                    const validUntil = new Date(booking.quotedPrice.validUntil);
+                    return now <= validUntil;
+                  })();
+                  
+                  const actualPricingStatus = (() => {
+                    if (!booking.quotedPrice) return booking.pricingStatus;
+                    if (booking.pricingStatus === 'quoted') {
+                      return quoteValid ? 'quoted' : 'expired';
+                    }
+                    return booking.pricingStatus;
+                  })();
                   
                   return (
                     <tr key={booking._id} className="hover:bg-gray-50">
@@ -1981,7 +2001,7 @@ export default function CustomerBookingsPage() {
                         <StatusBadge status={booking.status} size="sm" />
                       </td>
                       <td className="px-4 py-3">
-                        <PricingStatusBadge status={booking.pricingStatus} />
+                        <PricingStatusBadge status={actualPricingStatus} />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-2">
@@ -1999,7 +2019,7 @@ export default function CustomerBookingsPage() {
                           >
                             <Clock className="h-4 w-4 text-gray-500" />
                           </button>
-                          {booking.pricingStatus === 'quoted' && quoteValid && booking.status === 'price_quoted' && (
+                          {actualPricingStatus === 'quoted' && quoteValid && booking.status === 'price_quoted' && (
                             <>
                               <button
                                 onClick={() => handleAction('accept', booking)}

@@ -1805,9 +1805,7 @@ export default function ShipmentsPage() {
           {/* Pagination */}
           {pagination.pages > 1 && (
             <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-              </div>
+            
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}

@@ -1,8 +1,115 @@
 // services/shipping.js - getAllShipments ফাংশন আপডেট
 
 import axiosInstance from '@/lib/axiosInstance';
-import Cookies from 'js-cookie';
-
+import Cookies from 'js-cookie'; 
+export const trackByNumber = async (trackingNumber) => {
+    try {
+        // Add timestamp to bypass cache
+        const timestamp = Date.now();
+        
+        const response = await axiosInstance.get(`/shipments/track/${trackingNumber}?_=${timestamp}`, {
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
+        if (response.data.success) {
+            // Process and format tracking data
+            const data = response.data.data;
+            
+            // Format packages data
+            const packages = (data.packages || []).map((pkg, index) => ({
+                id: pkg.id || index + 1,
+                description: pkg.description || 'Package',
+                type: pkg.type || pkg.packagingType || 'Carton',
+                quantity: pkg.quantity || 1,
+                weight: pkg.weight || 0,
+                volume: pkg.volume || 0,
+                dimensions: pkg.dimensions ? 
+                    `${pkg.dimensions.length}x${pkg.dimensions.width}x${pkg.dimensions.height}${pkg.dimensions.unit || 'cm'}` : 
+                    'N/A',
+                hazardous: pkg.hazardous ? 'Yes' : 'No',
+                productCategory: pkg.productCategory,
+                hsCode: pkg.hsCode,
+                value: pkg.value
+            }));
+            
+            // Calculate totals
+            const totalPackages = packages.length;
+            const totalWeight = packages.reduce((sum, pkg) => sum + (pkg.weight * pkg.quantity), 0);
+            const totalVolume = packages.reduce((sum, pkg) => sum + (pkg.volume * pkg.quantity), 0);
+            
+            // Format timeline
+            const timeline = (data.timeline || []).map(event => ({
+                status: event.status,
+                location: event.location || getLocationFromStatus(event.status, data.destination),
+                description: event.description || getDefaultDescription(event.status),
+                timestamp: event.timestamp || event.date,
+                formattedDate: event.formattedDate || formatDate(event.timestamp || event.date),
+                progress: getProgressFromStatus(event.status)
+            }));
+            
+            return {
+                success: true,
+                data: {
+                    trackingNumber: data.trackingNumber,
+                    bookingNumber: data.bookingNumber,
+                    shipmentNumber: data.shipmentNumber,
+                    status: data.status,
+                    statusDisplay: getStatusDisplayText(data.status),
+                    currentLocation: data.currentLocation || getCurrentLocation(data.status, data.destination),
+                    origin: data.origin || data.sender?.address?.country || 'China Warehouse',
+                    destination: data.destination || data.receiver?.address?.country || 'USA',
+                    estimatedDeparture: data.estimatedDeparture,
+                    estimatedArrival: data.estimatedArrival,
+                    actualDelivery: data.actualDelivery,
+                    progress: data.progress || calculateProgress(data.status, data.timeline),
+                    timeline: timeline,
+                    sender: data.sender ? {
+                        name: data.sender.name,
+                        companyName: data.sender.companyName,
+                        email: data.sender.email,
+                        phone: data.sender.phone,
+                        address: data.sender.address
+                    } : null,
+                    receiver: data.receiver ? {
+                        name: data.receiver.name,
+                        companyName: data.receiver.companyName,
+                        email: data.receiver.email,
+                        phone: data.receiver.phone,
+                        address: data.receiver.address,
+                        isResidential: data.receiver.isResidential
+                    } : null,
+                    packages: packages,
+                    shipmentDetails: {
+                        totalPackages: totalPackages,
+                        totalWeight: totalWeight,
+                        totalVolume: totalVolume,
+                        shippingMode: data.shippingMode || 'DDU',
+                        serviceType: data.serviceType || 'standard'
+                    },
+                    container: data.container,
+                    consolidation: data.consolidation,
+                    hasArrived: data.hasArrived
+                }
+            };
+        }
+        
+        return {
+            success: false,
+            message: response.data.message || 'Shipment not found'
+        };
+        
+    } catch (error) {
+        console.error('❌ Track shipment error:', error);
+        return {
+            success: false,
+            message: error.response?.data?.message || error.message || 'Failed to track shipment',
+            error: error.response?.data
+        };
+    }
+};
 // 1. GET ALL SHIPMENTS (with filters & pagination) 
 
 // ==================== SHIPMENT API FUNCTIONS ====================

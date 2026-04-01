@@ -200,8 +200,8 @@ export const cancelBooking = async (bookingId, reason = '') => {
 };
 
 // 8. GET MY BOOKINGS (Customer)
-// Controller: exports.getMyBookings
-// Endpoint: GET /bookings/my-bookings
+// services/booking.js - getMyBookings ফাংশনটি সম্পূর্ণ পরিবর্তন করুন
+
 export const getMyBookings = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams({
@@ -211,12 +211,41 @@ export const getMyBookings = async (params = {}) => {
       ...(params.sort && { sort: params.sort || '-createdAt' })
     });
 
-    const response = await axiosInstance.get(`/my-bookings?${queryParams}`);
+    // ✅ ক্যাশ বাইপাস
+    const timestamp = Date.now();
+    const response = await axiosInstance.get(`/my-bookings?${queryParams}&_=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
     
     if (response.data.success) {
+      let bookings = response.data.data || [];
+      
+      // ✅ প্রতিটি booking এর quote validity রিয়েল-টাইম চেক করুন
+      bookings = bookings.map(booking => {
+        // যদি quote থাকে
+        if (booking.quotedPrice && booking.quotedPrice.validUntil) {
+          const now = new Date();
+          const validUntil = new Date(booking.quotedPrice.validUntil);
+          const isValid = now <= validUntil;
+          
+          // যদি expired হয় এবং status 'quoted' থাকে
+          if (!isValid && booking.pricingStatus === 'quoted') {
+            booking.pricingStatus = 'expired';
+          }
+          // যদি valid হয় এবং status 'expired' থাকে
+          else if (isValid && booking.pricingStatus === 'expired') {
+            booking.pricingStatus = 'quoted';
+          }
+        }
+        return booking;
+      });
+      
       return {
         success: true,
-        data: response.data.data,
+        data: bookings,
         summary: response.data.summary,
         pagination: response.data.pagination,
         message: response.data.message
