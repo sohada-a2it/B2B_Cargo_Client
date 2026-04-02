@@ -26,28 +26,28 @@ export default function logisticTimeline() {
       year: "1995",
       title: "300+ Branches",
       description: "Rapid growth phase with new branches opening in 15 countries worldwide.",
-      color: "green",
+      color: "blue",
       quote: "Denounce with righteous indignation and demoralized by pleasure."
     },
     {
       year: "2000",
       title: "Customer Award",
       description: "Recognized as 'Best Logistics Provider' by the International Trade Association.",
-      color: "amber",
+      color: "blue",
       quote: "Blinded by desire, that they cannot foresee the pain and trouble"
     },
     {
       year: "2010",
       title: "Digital Transformation",
       description: "Launched AI-powered tracking system revolutionizing supply chain management.",
-      color: "purple",
+      color: "blue",
       quote: "To take a trivial example, which of us ever undertakes laborious"
     },
     {
       year: "2024",
       title: "Sustainability Leader",
       description: "Achieved carbon-neutral operations across all European facilities.",
-      color: "teal",
+      color: "blue",
       quote: "Every pleasure is to be welcomed and every pain avoided."
     }
   ];
@@ -202,7 +202,7 @@ export default function logisticTimeline() {
             className={`text-xs font-medium transition-all duration-200 cursor-pointer ${
               index === currentIndex 
                 ? `text-${event.color}-400 font-semibold` 
-                : 'text-white/40 hover:text-white/70'
+                : 'text-white hover:text-blue-300'
             }`}
             onClick={() => setCurrentIndex(index)}
           >

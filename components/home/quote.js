@@ -227,10 +227,7 @@ export default function RequestQuote() {
               <span className="bg-gradient-to-r from-slate-800 via-orange-600 to-orange-500 bg-clip-text text-transparent">
                 Request Your Estimate
               </span>
-            </h2>
-            <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-              Get a personalized shipping quote within 24 hours. Fill out the form below with your cargo details.
-            </p>
+            </h2> 
           </div>
 
           {/* Form Card */}
@@ -387,24 +384,43 @@ export default function RequestQuote() {
 
             {/* Terms */}
             <div className="mt-6 relative z-10">
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  name="agreeToTerms"
-                  checked={formData.agreeToTerms}
-                  onChange={handleChange}
-                  className="w-5 h-5 mt-0.5 accent-orange-500 rounded border-slate-300 text-orange-500 focus:ring-orange-200 focus:ring-offset-0"
-                />
-                <span className="text-slate-600 text-sm">
-                  I agree to the <span className="text-orange-600 font-medium hover:text-orange-700 hover:underline cursor-pointer transition-colors">Terms & Conditions</span> and <span className="text-orange-600 font-medium hover:text-orange-700 hover:underline cursor-pointer transition-colors">Privacy Policy</span>.
-                </span>
-              </label>
-              {errors.agreeToTerms && (
-                <p className="mt-2 text-sm text-red-500 flex items-center gap-1 bg-red-50 px-3 py-2 rounded-lg">
-                  <span>⚠️</span> {errors.agreeToTerms}
-                </p>
-              )}
-            </div>
+  <label className="flex items-start gap-3 cursor-pointer group">
+    <input
+      type="checkbox"
+      name="agreeToTerms"
+      checked={formData.agreeToTerms}
+      onChange={handleChange}
+      className="w-5 h-5 mt-0.5 accent-orange-500 rounded border-slate-300 text-orange-500 focus:ring-orange-200 focus:ring-offset-0"
+    />
+    <span className="text-slate-600 text-sm">
+      I agree to the{" "}
+      <a 
+        href="/footer/terms" 
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-orange-600 font-medium hover:text-orange-700 hover:underline cursor-pointer transition-colors"
+        onClick={(e) => e.stopPropagation()} // checkbox trigger না হওয়ার জন্য
+      >
+        Terms & Conditions
+      </a>{" "}
+      and{" "}
+      <a 
+        href="/footer/privacy-policy" 
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-orange-600 font-medium hover:text-orange-700 hover:underline cursor-pointer transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        Privacy Policy
+      </a>.
+    </span>
+  </label>
+  {errors.agreeToTerms && (
+    <p className="mt-2 text-sm text-red-500 flex items-center gap-1 bg-red-50 px-3 py-2 rounded-lg">
+      <span>⚠️</span> {errors.agreeToTerms}
+    </p>
+  )}
+</div>
 
             {/* Button */}
             <div className="mt-10 text-center relative z-10">

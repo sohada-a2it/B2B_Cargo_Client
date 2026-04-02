@@ -139,6 +139,7 @@ const PricingPlans = () => {
               </ul>
 
               {/* Button with advanced hover effects */}
+              <a href="/footer/booking">
               <button
                 className={`relative mt-auto w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-3 group/btn overflow-hidden
                   ${
@@ -155,15 +156,15 @@ const PricingPlans = () => {
                   ></div>
                 </div>
                 
-                <a href="/footer/booking">
+                
                    <span className="relative z-10">GET STARTED TODAY</span>
-                </a>
+              
                 <i className="fas fa-arrow-right text-xs relative z-10 group-hover/btn:translate-x-2 group-hover/btn:scale-110 transition-all duration-300"></i>
                 
                 {/* Ripple effect on hover */}
                 <div className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover/btn:scale-x-100 transition-transform duration-500 origin-left"></div>
               </button>
-
+  </a>
               {/* Popular badge for Premium (example) */}
               {idx === 2 && (
                 <div className="absolute top-4 right-4">

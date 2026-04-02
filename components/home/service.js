@@ -161,7 +161,7 @@ const ServicesSection = () => {
               style={{ animationDelay: `${index * 0.2}s` }}
             >
               {/* Card Container */}
-              <div className="relative h-[550px]"> {/* Fixed height, no hover change */}
+              <div className="relative h-[400px]"> {/* Fixed height, no hover change */}
                 {/* Background Image with Overlay */}
                 <div className="absolute inset-0">
                   <Image
@@ -174,7 +174,7 @@ const ServicesSection = () => {
                   />
                   
                   {/* Gradient Overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/30`}></div>
+                  <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60`}></div>
                   
                   {/* Color Accent Overlay */}
                   <div 
@@ -197,46 +197,6 @@ const ServicesSection = () => {
                 <div className="absolute inset-0 p-8 flex flex-col justify-between">
                   {/* Top Section */}
                   <div>
-                    {/* Icon with Glow Effect */}
-                    <div className="relative mb-6">
-                      <div 
-                        className="relative w-20 h-20 rounded-2xl flex items-center justify-center text-3xl"
-                        style={{
-                          background: `linear-gradient(135deg, ${service.color}30, ${service.color}60)`,
-                          backdropFilter: 'blur(10px)',
-                          border: `1px solid ${service.color}80`,
-                          boxShadow: `0 10px 30px ${service.color}40`
-                        }}
-                      >
-                        {/* Animated Background */}
-                        <div className={`absolute inset-0 bg-gradient-to-r ${service.gradient} opacity-20 rounded-2xl`}></div>
-                        
-                        {/* Rotating Ring */}
-                        <div 
-                          className="absolute inset-0 rounded-2xl border border-dashed animate-spin-slow"
-                          style={{ borderColor: `${service.color}40` }}
-                        ></div>
-                        
-                        <i className={`fas ${service.icon} relative z-10 text-white`}></i>
-                      </div>
-
-                      {/* Glow Effect */}
-                      <div 
-                        className="absolute -inset-3 rounded-2xl opacity-50 blur-xl"
-                        style={{
-                          background: `radial-gradient(circle at center, ${service.color} 0%, transparent 70%)`,
-                        }}
-                      ></div>
-
-                      {/* Service Number */}
-                      <div 
-                        className="absolute -top-4 -right-4 text-8xl font-bold opacity-10"
-                        style={{ color: service.color }}
-                      >
-                        {service.id.toString().padStart(2, '0')}
-                      </div>
-                    </div>
-
                     {/* Title */}
                     <h3 className="text-3xl font-bold mb-3">
                       <span className={`bg-gradient-to-r ${service.gradient} bg-clip-text text-transparent`}>

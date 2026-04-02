@@ -120,12 +120,12 @@ export default function ProjectTabs() {
               )}
             >
               {tab}
-              <span className={clsx(
+              {/* <span className={clsx(
                 "text-xs px-2 py-0.5 rounded-full",
                 activeTab === tab ? "bg-white/20" : "bg-gray-200 text-gray-600"
               )}>
                 {getCount(tab)}
-              </span>
+              </span> */}
             </motion.button>
           ))}
         </div>

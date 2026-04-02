@@ -367,11 +367,11 @@ function Contact() {
           />
           <span>
             I agree to the{" "}
-            <a href="#" className="text-orange-500 hover:underline">
+            <a href="/footer/terms" className="text-orange-500 hover:underline">
               Terms
             </a>{" "}
             and{" "}
-            <a href="#" className="text-orange-500 hover:underline">
+            <a href="/footer/privacy-policy" className="text-orange-500 hover:underline">
               Privacy
             </a>
           </span>
