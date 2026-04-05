@@ -11,80 +11,80 @@ const StylishPartnerSlider = () => {
       id: 1,
       category: "DAILY NEWS",
       title: "New Generation",
-      image: "/images/partner (1).png",
-      activeImage: "/images/partner-active (1).png",
+      image: "/images/partner1 (1).png",
+      activeImage: "/images/partner1 (1).png",
       color: "#FD5621",
     },
     {
       id: 2,
       category: "TECHNOLOGY",
       title: "HIGH PERFORMANCE",
-      image: "/images/partner (2).png",
-      activeImage: "/images/partner-active (2).png",
+      image: "/images/partner1 (2).png",
+      activeImage: "/images/partner1 (2).png",
       color: "#122652",
     },
     {
       id: 3,
       category: "FURTURATECH",
       title: "INNOVATIVE SOLUTION",
-      image: "/images/partner (3).png",
-      activeImage: "/images/partner-active (3).png",
+      image: "/images/partner1 (3).png",
+      activeImage: "/images/partner1 (3).png",
       color: "#FD5621",
     },
     {
       id: 4,
       category: "CYBERTECH",
       title: "SECURITY MADE SIMPLE",
-      image: "/images/partner (4).png",
-      activeImage: "/images/partner-active (4).png",
+      image: "/images/partner1 (4).png",
+      activeImage: "/images/partner1 (4).png",
       color: "#122652",
     },
     {
       id: 5,
       category: "ART STUDIO",
       title: "STYLISH, MODERN",
-      image: "/images/partner (5).png",
-      activeImage: "/images/partner-active (5).png",
+      image: "/images/partner1 (5).png",
+      activeImage: "/images/partner1 (5).png",
       color: "#FD5621",
     },
     {
       id: 6,
       category: "MORIOX",
       title: "High Performance",
-      image: "/images/partner (6).png",
-      activeImage: "/images/partner-active (6).png",
+      image: "/images/partner1 (6).png",
+      activeImage: "/images/partner1 (6).png",
       color: "#122652",
     },
     {
       id: 7,
       category: "MORIOX",
       title: "High Performance",
-      image: "/images/partner (7).png",
-      activeImage: "/images/partner-active (7).png",
+      image: "/images/partner1 (7).png",
+      activeImage: "/images/partner1 (7).png",
       color: "#FD5621",
     },
     {
       id: 8,
       category: "MORIOX",
       title: "High Performance",
-      image: "/images/partner (8).png",
-      activeImage: "/images/partner-active (8).png",
+      image: "/images/partner1 (8).png",
+      activeImage: "/images/partner1 (8).png",
       color: "#122652",
     },
     {
       id: 9,
       category: "MORIOX",
       title: "High Performance",
-      image: "/images/partner (9).png",
-      activeImage: "/images/partner-active (9).png",
+      image: "/images/partner1 (9).png",
+      activeImage: "/images/partner1 (9).png",
       color: "#FD5621",
     },
     {
       id: 10,
       category: "MORIOX",
       title: "High Performance",
-      image: "/images/partner (10).png",
-      activeImage: "/images/partner-active (10).png",
+      image: "/images/partner1 (10).png",
+      activeImage: "/images/partner1 (10).png",
       color: "#122652",
     },
   ];
@@ -138,77 +138,81 @@ const StylishPartnerSlider = () => {
         </div>
       </div>
 
-      {/* Responsive Grid - Mobile: 5x2, Desktop: 10x1 full width */}
-      <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-10 gap-1.5 sm:gap-2 md:gap-3">
-        {partners.map((partner) => {
-          const isActive = partner.id === activePartner.id;
-          const isHovered = hoveredId === partner.id;
+      {/* Fixed width grid container */}
+      <div className="w-full">
+        {/* Responsive Grid - Fixed aspect ratio for all images */}
+        <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-10 gap-1.5 sm:gap-2 md:gap-3">
+          {partners.map((partner) => {
+            const isActive = partner.id === activePartner.id;
+            const isHovered = hoveredId === partner.id;
+            const showActiveImage = isActive || isHovered;
 
-          // Show active image if: item is active OR item is being hovered
-          const showActiveImage = isActive || isHovered;
+            return (
+              <div
+                key={partner.id}
+                onClick={() =>
+                  setCurrentSlide(partners.findIndex((p) => p.id === partner.id))
+                }
+                onMouseEnter={() => setHoveredId(partner.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className="relative w-full cursor-pointer transition-all duration-300 hover:scale-105 sm:hover:scale-110"
+                style={{
+                  aspectRatio: "1/1", // Forces perfect square ratio for all items
+                  transform: isActive ? "scale(1.02) sm:scale(1.05)" : "scale(1)",
+                  boxShadow: isActive
+                    ? `0 8px 16px -6px ${partner.color}80`
+                    : "0 2px 8px -4px rgba(0,0,0,0.1)",
+                }}
+              >
+                {/* Container with fixed dimensions */}
+                <div className="absolute inset-0 rounded-lg overflow-hidden bg-gray-50">
+                  {/* Inactive Image */}
+                  <div
+                    className={`absolute inset-0 transition-opacity duration-300 ${
+                      showActiveImage ? "opacity-0" : "opacity-100"
+                    }`}
+                  >
+                    <Image
+                      src={partner.image}
+                      alt={partner.title}
+                      fill
+                      className="object-contain p-2" // Using object-contain to maintain aspect ratio with padding
+                      sizes="(max-width: 640px) 20vw, (max-width: 768px) 10vw, 8vw"
+                      priority={partner.id <= 5}
+                    />
+                  </div>
+                  
+                  {/* Active Image */}
+                  <div
+                    className={`absolute inset-0 transition-opacity duration-300 ${
+                      showActiveImage ? "opacity-100" : "opacity-0"
+                    }`}
+                  >
+                    <Image
+                      src={partner.activeImage}
+                      alt={partner.title}
+                      fill
+                      className="object-contain p-2" // Consistent object-fit with padding
+                      sizes="(max-width: 640px) 20vw, (max-width: 768px) 10vw, 8vw"
+                      priority={partner.id <= 5}
+                    />
+                  </div>
+                </div>
 
-          return (
-            <div
-              key={partner.id}
-              onClick={() =>
-                setCurrentSlide(partners.findIndex((p) => p.id === partner.id))
-              }
-              onMouseEnter={() => setHoveredId(partner.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              className="relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all duration-300 hover:scale-105 sm:hover:scale-110"
-              style={{
-                transform: isActive ? "scale(1.02) sm:scale(1.05)" : "scale(1)",
-                boxShadow: isActive
-                  ? `0 8px 16px -6px ${partner.color}80`
-                  : "0 2px 8px -4px rgba(0,0,0,0.1)",
-              }}
-            >
-              {/* Image with fade transition */}
-              <div className="absolute inset-0">
-                {/* Inactive Image */}
-                <div
-                  className={`absolute inset-0 transition-opacity duration-300 ${
-                    showActiveImage ? "opacity-0" : "opacity-100"
-                  }`}
-                >
-                  <Image
-                    src={partner.image}
-                    alt={partner.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 20vw, (max-width: 768px) 10vw, 8vw"
+                {/* Active Indicator Border */}
+                {isActive && (
+                  <div
+                    className="absolute inset-0 rounded-lg border-2 sm:border-3 transition-all duration-300 pointer-events-none"
+                    style={{
+                      borderColor: partner.color,
+                      boxShadow: `0 0 12px ${partner.color}`,
+                    }}
                   />
-                </div>
-                
-                {/* Active Image */}
-                <div
-                  className={`absolute inset-0 transition-opacity duration-300 ${
-                    showActiveImage ? "opacity-100" : "opacity-0"
-                  }`}
-                >
-                  <Image
-                    src={partner.activeImage}
-                    alt={partner.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 20vw, (max-width: 768px) 10vw, 8vw"
-                  />
-                </div>
+                )}
               </div>
-
-              {/* Active Indicator Border */}
-              {isActive && (
-                <div
-                  className="absolute inset-0 rounded-lg border-2 sm:border-3 transition-all duration-300"
-                  style={{
-                    borderColor: partner.color,
-                    boxShadow: `0 0 12px ${partner.color}`,
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Bottom Navigation - Responsive */}
@@ -246,7 +250,7 @@ const StylishPartnerSlider = () => {
       </div>
 
       {/* Active Partner Info - Responsive */}
-      <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
+      {/* <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs sm:text-sm text-gray-500 tracking-wide">{activePartner.category}</p>
@@ -256,9 +260,7 @@ const StylishPartnerSlider = () => {
             >
               {activePartner.title}
             </p>
-          </div>
-          
-          {/* Desktop Quick Navigation */}
+          </div> 
           <div className="hidden sm:flex gap-2 mt-2 sm:mt-0">
             {partners.slice(0, 5).map((_, idx) => (
               <button
@@ -271,7 +273,7 @@ const StylishPartnerSlider = () => {
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
