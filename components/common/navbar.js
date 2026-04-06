@@ -161,6 +161,7 @@ const Navbar = () => {
     { label: 'Create Bookings', href: '/Bookings/create_bookings', icon: <ClipboardList className="w-4 h-4" /> },
     { label: 'My Bookings', href: '/Bookings/my_bookings', icon: <ClipboardList className="w-4 h-4" /> },
     { label: 'My Shipments', href: '/my-shipping', icon: <Truck className="w-4 h-4" /> },
+    { label: 'Manual Shipping', href: '/manual-shipping', icon: <Truck className="w-4 h-4" /> },
     { label: 'My Invoices', href: '/invoice', icon: <FileSpreadsheet className="w-4 h-4" /> }
   ];
 
