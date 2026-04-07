@@ -1,15 +1,14 @@
-// app/tracking-number/page.js - Complete Updated Version with Return Support
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Search, Package, MapPin, Calendar, Clock, Ship, Truck,
   Weight, Box, Layers, ChevronDown, ChevronUp, FileText,
   Container, User, Building, Phone, Mail, CheckCircle,
   AlertCircle, XCircle, Download, QrCode, Shield,
   Award, Send, Play, Pause, Ban, RotateCcw, Flag, Home,
-  RefreshCw, Undo2
+  RefreshCw, Undo2, Copy, Share2
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { trackByNumber } from '@/Api/booking'; 
@@ -19,6 +18,7 @@ import { TrackingPDF } from '@/components/trackingPdf';
 // ==================== STATUS CONFIG ====================
 const STATUS_CONFIG = {
   // Initial statuses
+  'booking_requested': { label: 'Booking Requested', color: 'bg-gray-100 text-gray-600', icon: Package, progress: 5, order: 0, stage: 'pending' },
   'pending': { label: 'Pending', color: 'bg-yellow-100 text-yellow-800', icon: Package, progress: 10, order: 1, stage: 'pending' },
   'picked_up_from_warehouse': { label: 'Picked Up', color: 'bg-blue-100 text-blue-800', icon: Truck, progress: 20, order: 2, stage: 'warehouse' },
   'received_at_warehouse': { label: 'Picked Up from Warehouse', color: 'bg-purple-100 text-purple-800', icon: Building, progress: 25, order: 3, stage: 'warehouse' }, 
@@ -41,28 +41,28 @@ const STATUS_CONFIG = {
   'arrived_at_destination_port': { label: 'Arrived at Destination Port', color: 'bg-green-100 text-green-800', icon: Flag, progress: 70, order: 14, stage: 'arrival' },
   'arrived': { label: 'Arrived at Destination Port', color: 'bg-green-100 text-green-800', icon: Flag, progress: 70, order: 14, stage: 'arrival' },
   
-  // Customs statuses - FIX THESE
-  'under_customs_cleared': { label: 'Under Customs Clearance', color: 'bg-blue-100 text-blue-800', icon: Shield, progress: 75, order: 15, stage: 'customs' },  // ← progress 75, stage customs
+  // Customs statuses
+  'under_customs_cleared': { label: 'Under Customs Clearance', color: 'bg-blue-100 text-blue-800', icon: Shield, progress: 75, order: 15, stage: 'customs' },
   'customs_cleared': { label: 'Customs Cleared', color: 'bg-emerald-100 text-emerald-800', icon: Shield, progress: 80, order: 16, stage: 'customs' },
   'customs_held': { label: 'Customs Held', color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle, progress: 75, order: 17, stage: 'customs' },
   'customs_inspection': { label: 'Customs Inspection', color: 'bg-orange-100 text-orange-800', icon: AlertCircle, progress: 75, order: 18, stage: 'customs' },
   
   // Delivery statuses
-  'out_for_delivery': { label: 'Out for Delivery', color: 'bg-sky-100 text-sky-800', icon: Truck, progress: 90, order: 18, stage: 'delivery' },
-  'delivery_attempted': { label: 'Delivery Attempted', color: 'bg-yellow-100 text-yellow-800', icon: Truck, progress: 92, order: 19, stage: 'delivery' },
-  'delivered': { label: 'Delivered', color: 'bg-green-600 text-white', icon: CheckCircle, progress: 100, order: 20, stage: 'delivery' },
-  'completed': { label: 'Completed', color: 'bg-emerald-600 text-white', icon: Award, progress: 100, order: 21, stage: 'delivery' },
+  'out_for_delivery': { label: 'Out for Delivery', color: 'bg-sky-100 text-sky-800', icon: Truck, progress: 90, order: 19, stage: 'delivery' },
+  'delivery_attempted': { label: 'Delivery Attempted', color: 'bg-yellow-100 text-yellow-800', icon: Truck, progress: 92, order: 20, stage: 'delivery' },
+  'delivered': { label: 'Delivered', color: 'bg-green-600 text-white', icon: CheckCircle, progress: 100, order: 21, stage: 'delivery' },
+  'completed': { label: 'Completed', color: 'bg-emerald-600 text-white', icon: Award, progress: 100, order: 22, stage: 'delivery' },
   
-  // ========== RETURN STATUSES (New) ==========
-  'return_requested': { label: 'Return Requested', color: 'bg-orange-100 text-orange-800', icon: RefreshCw, progress: 85, order: 22, stage: 'return' },
-  'return_approved': { label: 'Return Approved', color: 'bg-blue-100 text-blue-800', icon: CheckCircle, progress: 90, order: 23, stage: 'return' },
-  'return_in_transit': { label: 'Return In Transit', color: 'bg-amber-100 text-amber-800', icon: Undo2, progress: 95, order: 24, stage: 'return' },
-  'return_completed': { label: 'Return Completed', color: 'bg-purple-600 text-white', icon: RefreshCw, progress: 100, order: 25, stage: 'return' },
+  // Return statuses
+  'return_requested': { label: 'Return Requested', color: 'bg-orange-100 text-orange-800', icon: RefreshCw, progress: 85, order: 23, stage: 'return' },
+  'return_approved': { label: 'Return Approved', color: 'bg-blue-100 text-blue-800', icon: CheckCircle, progress: 90, order: 24, stage: 'return' },
+  'return_in_transit': { label: 'Return In Transit', color: 'bg-amber-100 text-amber-800', icon: Undo2, progress: 95, order: 25, stage: 'return' },
+  'return_completed': { label: 'Return Completed', color: 'bg-purple-600 text-white', icon: RefreshCw, progress: 100, order: 26, stage: 'return' },
   
   // Problem statuses
   'on_hold': { label: 'Shipment On Hold', color: 'bg-gray-100 text-gray-800', icon: Pause, progress: 50, order: 99, stage: 'hold' },
   'cancelled': { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: Ban, progress: 0, order: 99, stage: 'cancelled' },
-  'returned': { label: 'Returned', color: 'bg-red-100 text-red-800', icon: RotateCcw, progress: 100, order: 26, stage: 'return' }
+  'returned': { label: 'Returned', color: 'bg-red-100 text-red-800', icon: RotateCcw, progress: 100, order: 27, stage: 'return' }
 };
 
 // Progress Bar Stages
@@ -73,10 +73,13 @@ const PROGRESS_STAGES = [
   { label: 'Transit', key: 'transit', minProgress: 56, maxProgress: 70 },
   { label: 'Customs', key: 'customs', minProgress: 71, maxProgress: 85 },
   { label: 'Delivery', key: 'delivery', minProgress: 86, maxProgress: 100 },
-  { label: 'Return', key: 'return', minProgress: 86, maxProgress: 100 }  // Return stage added
+  { label: 'Return', key: 'return', minProgress: 86, maxProgress: 100 }
 ];
 
 export default function TrackingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [trackingNumber, setTrackingNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [trackingData, setTrackingData] = useState(null);
@@ -84,6 +87,42 @@ export default function TrackingPage() {
   const [showAllPackages, setShowAllPackages] = useState(false);
   const [activeTab, setActiveTab] = useState('timeline');
   const [timelineView, setTimelineView] = useState('oldToNew');
+  const [shareSuccess, setShareSuccess] = useState(false);
+
+  // Get tracking number from URL on load
+  useEffect(() => {
+    const trackingParam = searchParams.get('tracking');
+    if (trackingParam) {
+      setTrackingNumber(trackingParam.toUpperCase());
+      // Auto-search if tracking number exists in URL
+      handleTrackFromUrl(trackingParam.toUpperCase());
+    }
+  }, [searchParams]);
+
+  const handleTrackFromUrl = async (trackingNum) => {
+    setLoading(true);
+    setError(null);
+    setTrackingData(null);
+    
+    try {
+      const result = await trackByNumber(trackingNum);
+      
+      if (result.success) {
+        const processedData = processTimelineForHoldResume(result.data);
+        setTrackingData(processedData);
+        toast.success('Tracking data found');
+      } else {
+        setError(result.message || 'No shipment found with this tracking number');
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to fetch tracking data');
+      toast.error('Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTrack = async (e) => {
     e.preventDefault();
@@ -92,6 +131,11 @@ export default function TrackingPage() {
       toast.warning('Please enter a tracking number');
       return;
     }
+
+    // Update URL with tracking number
+    const params = new URLSearchParams(searchParams);
+    params.set('tracking', trackingNumber.toUpperCase());
+    router.push(`/tracking-number?${params.toString()}`, { scroll: false });
 
     setLoading(true);
     setError(null);
@@ -117,193 +161,238 @@ export default function TrackingPage() {
     }
   };
 
+  // Copy shareable link to clipboard
+  const handleCopyShareLink = () => {
+    const shareUrl = `${window.location.origin}/tracking-number?tracking=${trackingNumber}`;
+    navigator.clipboard.writeText(shareUrl);
+    setShareSuccess(true);
+    toast.success('Shareable link copied to clipboard!');
+    setTimeout(() => setShareSuccess(false), 3000);
+  };
+
+  // Share using Web Share API (mobile)
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/tracking-number?tracking=${trackingNumber}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Shipment Tracking',
+          text: `Track your shipment: ${trackingNumber}`,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+        handleCopyShareLink();
+      }
+    } else {
+      handleCopyShareLink();
+    }
+  };
+
   // Process hold/resume events
-// Process hold/resume events - FIXED VERSION
-const processTimelineForHoldResume = (data) => {
-  if (!data?.timeline) return data;
-  
-  let timeline = [...data.timeline];
-  let processedEvents = [];
-  let currentStatus = null;
-  let statusBeforeHold = null;
-  let isOnHold = false;
-  let holdEventEncountered = false;
-  let originalStatusBeforeHold = null; // Track the actual status before hold
-  
-  // Sort timeline chronologically
-  timeline.sort((a, b) => {
-    const dateA = new Date(a.date || a.timestamp || a.createdAt || 0);
-    const dateB = new Date(b.date || b.timestamp || b.createdAt || 0);
-    return dateA - dateB;
-  });
-  
-  // First pass: Find the status BEFORE any hold event
-  for (let i = 0; i < timeline.length; i++) {
-    const event = timeline[i];
-    const status = event.status?.toLowerCase() || '';
-    const description = event.description?.toLowerCase() || '';
+  const processTimelineForHoldResume = (data) => {
+    if (!data?.timeline) return data;
     
-    // If we find an 'on_hold' event, capture the previous status
-    if (status === 'on_hold' || description.includes('on hold')) {
-      if (!holdEventEncountered && currentStatus && currentStatus !== 'pending') {
-        statusBeforeHold = currentStatus;
-        originalStatusBeforeHold = currentStatus;
-        holdEventEncountered = true;
-      }
-    } 
-    // Update current status for normal events (excluding on_hold)
-    else if (status !== 'on_hold' && !status.includes('hold')) {
-      // Don't update if we're in a hold state and this is a pending event
-      if (!(isOnHold && status === 'pending')) {
-        currentStatus = status;
-      }
-    }
+    let timeline = [...data.timeline];
+    let processedEvents = [];
+    let currentStatus = null;
+    let statusBeforeHold = null;
+    let isOnHold = false;
+    let holdEventEncountered = false;
+    let originalStatusBeforeHold = null;
     
-    // Track hold state
-    if (status === 'on_hold' || description.includes('on hold')) {
-      isOnHold = true;
-    } else if (description.includes('resumed') || status.includes('resumed')) {
-      isOnHold = false;
-    }
-  }
-  
-  // Reset for second pass
-  currentStatus = null;
-  isOnHold = false;
-  holdEventEncountered = false;
-  let restoredStatus = null;
-  let pendingEvent = null;
-  
-  // Second pass: Process events for display
-  for (let i = 0; i < timeline.length; i++) {
-    const event = timeline[i];
-    const status = event.status?.toLowerCase() || '';
-    const description = event.description?.toLowerCase() || '';
+    // Sort timeline chronologically
+    timeline.sort((a, b) => {
+      const dateA = new Date(a.date || a.timestamp || a.createdAt || 0);
+      const dateB = new Date(b.date || b.timestamp || b.createdAt || 0);
+      return dateA - dateB;
+    });
     
-    // On Hold event
-    if (status === 'on_hold' || description.includes('on hold')) {
-      if (!holdEventEncountered) {
-        // Store the current status before hold
-        if (currentStatus && currentStatus !== 'pending') {
+    // First pass: Find the status BEFORE any hold event
+    for (let i = 0; i < timeline.length; i++) {
+      const event = timeline[i];
+      const status = event.status?.toLowerCase() || '';
+      const description = event.description?.toLowerCase() || '';
+      
+      if (status === 'on_hold' || description.includes('on hold')) {
+        if (!holdEventEncountered && currentStatus && currentStatus !== 'pending') {
           statusBeforeHold = currentStatus;
+          originalStatusBeforeHold = currentStatus;
+          holdEventEncountered = true;
         }
+      } 
+      else if (status !== 'on_hold' && !status.includes('hold')) {
+        if (!(isOnHold && status === 'pending')) {
+          currentStatus = status;
+        }
+      }
+      
+      if (status === 'on_hold' || description.includes('on hold')) {
         isOnHold = true;
-        holdEventEncountered = true;
+      } else if (description.includes('resumed') || status.includes('resumed')) {
+        isOnHold = false;
+      }
+    }
+    
+    // Reset for second pass
+    currentStatus = null;
+    isOnHold = false;
+    holdEventEncountered = false;
+    let restoredStatus = null;
+    let pendingEvent = null;
+    let bookingRequestedEvent = null;
+    
+    // Second pass: Process events for display
+    for (let i = 0; i < timeline.length; i++) {
+      const event = timeline[i];
+      const status = event.status?.toLowerCase() || '';
+      const description = event.description?.toLowerCase() || '';
+      
+      // Booking Requested event
+      if (status === 'booking_requested') {
+        bookingRequestedEvent = {
+          ...event,
+          mappedStatus: 'booking_requested',
+          originalStatus: event.status,
+          isHoldEvent: false,
+          date: event.date || event.timestamp || event.createdAt || new Date().toISOString()
+        };
+        continue;
+      }
+      
+      // On Hold event
+      if (status === 'on_hold' || description.includes('on hold')) {
+        if (!holdEventEncountered) {
+          if (currentStatus && currentStatus !== 'pending') {
+            statusBeforeHold = currentStatus;
+          }
+          isOnHold = true;
+          holdEventEncountered = true;
+          
+          processedEvents.push({
+            ...event,
+            isHoldEvent: true,
+            statusBeforeHold: statusBeforeHold,
+            originalStatus: event.status,
+            mappedStatus: 'on_hold'
+          });
+        }
+        continue;
+      }
+      
+      // Resume event
+      else if (description.includes('resumed from hold') || status.includes('resumed')) {
+        isOnHold = false;
         
-        // Add hold event to timeline
+        if (statusBeforeHold && statusBeforeHold !== 'pending') {
+          restoredStatus = statusBeforeHold;
+          
+          const restoredEvent = {
+            ...event,
+            status: statusBeforeHold,
+            displayStatus: statusBeforeHold,
+            mappedStatus: statusBeforeHold,
+            description: `Shipment resumed from hold. Status restored to ${statusBeforeHold.replace(/_/g, ' ')}. ${event.description || ''}`,
+            isResumeEvent: true,
+            restoredFromHold: true,
+            originalStatus: statusBeforeHold
+          };
+          processedEvents.push(restoredEvent);
+          currentStatus = statusBeforeHold;
+          statusBeforeHold = null;
+        } else if (originalStatusBeforeHold) {
+          restoredStatus = originalStatusBeforeHold;
+          const restoredEvent = {
+            ...event,
+            status: originalStatusBeforeHold,
+            displayStatus: originalStatusBeforeHold,
+            mappedStatus: originalStatusBeforeHold,
+            description: `Shipment resumed from hold. Status restored to ${originalStatusBeforeHold.replace(/_/g, ' ')}. ${event.description || ''}`,
+            isResumeEvent: true,
+            restoredFromHold: true,
+            originalStatus: originalStatusBeforeHold
+          };
+          processedEvents.push(restoredEvent);
+          currentStatus = originalStatusBeforeHold;
+          originalStatusBeforeHold = null;
+        }
+        continue;
+      }
+      
+      // Normal events
+      else {
+        if (status === 'pending' && currentStatus && currentStatus !== 'pending') {
+          continue;
+        }
+        
+        if (status === 'pending' && !currentStatus) {
+          pendingEvent = event;
+          continue;
+        }
+        
+        currentStatus = status;
+        
         processedEvents.push({
           ...event,
-          isHoldEvent: true,
-          statusBeforeHold: statusBeforeHold,
+          mappedStatus: status,
           originalStatus: event.status,
-          mappedStatus: 'on_hold'
+          isHoldEvent: false
         });
       }
-      continue;
     }
     
-    // Resume event
-    else if (description.includes('resumed from hold') || status.includes('resumed')) {
-      isOnHold = false;
-      
-      // Use the stored status before hold (not pending!)
-      if (statusBeforeHold && statusBeforeHold !== 'pending') {
-        restoredStatus = statusBeforeHold;
-        
-        // Create a restored status event with the original status
-        const restoredEvent = {
-          ...event,
-          status: statusBeforeHold, // Set to the original status
-          displayStatus: statusBeforeHold,
-          mappedStatus: statusBeforeHold,
-          description: `Shipment resumed from hold. Status restored to ${statusBeforeHold.replace(/_/g, ' ')}. ${event.description || ''}`,
-          isResumeEvent: true,
-          restoredFromHold: true,
-          originalStatus: statusBeforeHold
-        };
-        processedEvents.push(restoredEvent);
-        
-        // Update current status to the restored one
-        currentStatus = statusBeforeHold;
-        statusBeforeHold = null;
-      } else if (originalStatusBeforeHold) {
-        // Fallback to original status
-        restoredStatus = originalStatusBeforeHold;
-        const restoredEvent = {
-          ...event,
-          status: originalStatusBeforeHold,
-          displayStatus: originalStatusBeforeHold,
-          mappedStatus: originalStatusBeforeHold,
-          description: `Shipment resumed from hold. Status restored to ${originalStatusBeforeHold.replace(/_/g, ' ')}. ${event.description || ''}`,
-          isResumeEvent: true,
-          restoredFromHold: true,
-          originalStatus: originalStatusBeforeHold
-        };
-        processedEvents.push(restoredEvent);
-        currentStatus = originalStatusBeforeHold;
-        originalStatusBeforeHold = null;
+    // Add booking_requested at the beginning
+    if (bookingRequestedEvent) {
+      let earliestDate = new Date();
+      if (processedEvents.length > 0) {
+        const firstEventDate = processedEvents[0].date || processedEvents[0].timestamp || processedEvents[0].createdAt;
+        if (firstEventDate) {
+          earliestDate = new Date(firstEventDate);
+        }
       }
-      continue;
-    }
-    
-    // Normal events
-    else {
-      // Skip pending events if we already have a real status
-      if (status === 'pending' && currentStatus && currentStatus !== 'pending') {
-        continue;
-      }
+      const bookingDate = new Date(earliestDate);
+      bookingDate.setMinutes(bookingDate.getMinutes() - 2);
       
-      // Store pending event for later (but only if no real status exists)
-      if (status === 'pending' && !currentStatus) {
-        pendingEvent = event;
-        continue;
-      }
-      
-      // Update current status for normal events
-      currentStatus = status;
-      
-      // Add the event with proper mapping
-      processedEvents.push({
-        ...event,
-        mappedStatus: status,
-        originalStatus: event.status,
-        isHoldEvent: false
+      processedEvents.unshift({
+        ...bookingRequestedEvent,
+        date: bookingDate.toISOString(),
+        timestamp: bookingDate.toISOString(),
+        mappedStatus: 'booking_requested',
+        isBookingRequest: true
       });
     }
-  }
-  
-  // Add pending event ONLY at the very beginning if no other events exist
-  if (pendingEvent && processedEvents.length === 0) {
-    processedEvents.unshift({
-      ...pendingEvent,
-      mappedStatus: 'pending',
-      originalStatus: pendingEvent.status
+    
+    // Add pending event ONLY at the very beginning if no other events exist
+    if (pendingEvent && processedEvents.length === 0) {
+      processedEvents.unshift({
+        ...pendingEvent,
+        mappedStatus: 'pending',
+        originalStatus: pendingEvent.status
+      });
+    }
+    
+    // Clean up: Remove any 'pending' events that appear after real statuses
+    processedEvents = processedEvents.filter((event, index) => {
+      const mappedStatus = event.mappedStatus || event.status?.toLowerCase() || '';
+      if (mappedStatus === 'pending' && index > 0) {
+        const hasNonPendingBefore = processedEvents.slice(0, index).some(e => {
+          const s = e.mappedStatus || e.status?.toLowerCase() || '';
+          return s !== 'pending' && s !== 'booking_requested';
+        });
+        if (hasNonPendingBefore) {
+          return false;
+        }
+      }
+      return true;
     });
-  }
-  
-  // Clean up: Remove any 'pending' events that appear after real statuses
-  processedEvents = processedEvents.filter((event, index) => {
-    const mappedStatus = event.mappedStatus || event.status?.toLowerCase() || '';
-    if (mappedStatus === 'pending' && index > 0) {
-      // Check if there's any non-pending event before this
-      const hasNonPendingBefore = processedEvents.slice(0, index).some(e => {
-        const s = e.mappedStatus || e.status?.toLowerCase() || '';
-        return s !== 'pending';
-      });
-      if (hasNonPendingBefore) {
-        return false; // Remove this pending event
-      }
-    }
-    return true;
-  });
-  
-  return {
-    ...data,
-    timeline: processedEvents,
-    originalTimeline: timeline,
-    status: restoredStatus || data.status // Update the main status if restored
+    
+    return {
+      ...data,
+      timeline: processedEvents,
+      originalTimeline: timeline,
+      status: restoredStatus || data.status
+    };
   };
-};
   
   const findLastNonHoldStatus = (events) => {
     for (let i = events.length - 1; i >= 0; i--) {
@@ -318,20 +407,6 @@ const processTimelineForHoldResume = (data) => {
   const getStatusConfig = (status) => {
     if (!status) {
       return { label: 'Unknown', color: 'bg-gray-100 text-gray-800', icon: Package, progress: 0, order: 999, stage: 'unknown' };
-    }
-
-    // Check for return statuses first
-    if (status === 'return_completed' || status === 'returned') {
-      return STATUS_CONFIG['return_completed'];
-    }
-    if (status === 'return_approved') {
-      return STATUS_CONFIG['return_approved'];
-    }
-    if (status === 'return_requested') {
-      return STATUS_CONFIG['return_requested'];
-    }
-    if (status === 'return_in_transit') {
-      return STATUS_CONFIG['return_in_transit'];
     }
 
     if (STATUS_CONFIG[status]) {
@@ -364,7 +439,6 @@ const processTimelineForHoldResume = (data) => {
     };
   };
 
-  // Check if shipment has return status
   const hasReturnStatus = () => {
     if (!trackingData?.timeline) return false;
     return trackingData.timeline.some(event => {
@@ -373,200 +447,128 @@ const processTimelineForHoldResume = (data) => {
     });
   };
 
-  // Get current stage for progress bar highlighting
-// Get current stage for progress bar highlighting - UPDATED
-const getCurrentStage = () => {
-  const status = trackingData?.status?.toLowerCase() || '';
-  
-  if (status.includes('return')) {
-    return 'return';
-  }
-  if (status.includes('delivered') || status.includes('completed')) {
-    return 'delivery';
-  }
-  // Fix customs detection - check for customs related statuses
-  if (status.includes('customs_cleared') || 
-      status.includes('under_customs_cleared') || 
-      status.includes('customs_inspection') || 
-      status.includes('customs_held')) {
-    return 'customs';
-  }
-  if (status.includes('transit') || status.includes('departed') || status.includes('in_transit')) {
-    return 'transit';
-  }
-  if (status.includes('queue') || status.includes('consolidat')) {
-    return 'queue';
-  }
-  if (status.includes('warehouse') || status.includes('received') || status.includes('dispatch') || status.includes('loaded')) {
-    return 'warehouse';
-  }
-  if (status.includes('pending') || status.includes('picked')) {
+  const getCurrentStage = () => {
+    const status = trackingData?.status?.toLowerCase() || '';
+    
+    if (status.includes('return')) {
+      return 'return';
+    }
+    if (status.includes('delivered') || status.includes('completed')) {
+      return 'delivery';
+    }
+    if (status.includes('customs_cleared') || 
+        status.includes('under_customs_cleared') || 
+        status.includes('customs_inspection') || 
+        status.includes('customs_held')) {
+      return 'customs';
+    }
+    if (status.includes('transit') || status.includes('departed') || status.includes('in_transit')) {
+      return 'transit';
+    }
+    if (status.includes('queue') || status.includes('consolidat')) {
+      return 'queue';
+    }
+    if (status.includes('warehouse') || status.includes('received') || status.includes('dispatch') || status.includes('loaded')) {
+      return 'warehouse';
+    }
+    if (status.includes('pending') || status.includes('picked') || status.includes('booking')) {
+      return 'pending';
+    }
+    
+    const timeline = getTimelineOldToNew();
+    if (timeline.length > 0) {
+      const lastEvent = timeline[timeline.length - 1];
+      const config = getStatusConfig(lastEvent.mappedStatus || lastEvent.status);
+      if (config.stage === 'customs') return 'customs';
+      if (config.stage === 'return') return 'return';
+      if (config.stage === 'delivery') return 'delivery';
+    }
+    
     return 'pending';
-  }
-  
-  const timeline = getTimelineOldToNew();
-  if (timeline.length > 0) {
-    const lastEvent = timeline[timeline.length - 1];
-    const config = getStatusConfig(lastEvent.mappedStatus || lastEvent.status);
-    if (config.stage === 'customs') return 'customs';
-    if (config.stage === 'return') return 'return';
-    if (config.stage === 'delivery') return 'delivery';
-  }
-  
-  return 'pending';
-};
-
-const getTimelineOldToNew = () => {
-  if (!trackingData?.timeline) return [];
-  
-  let timeline = [...trackingData.timeline];
-  
-  const HIDDEN_STATUSES = [
-    'inspected', 'damage_reported', 'damaged', 'in_progress',
-    'delivery_attempted', 'loaded', 'removed_from_queue', 'removed', 'queue_removed'
-  ];
-  
-  const STATUS_MAPPING = {
-    'in_progress': 'consolidating',
-    'loaded': 'loaded_in_container',
-    'pending_consolidation': 'pending_consolidation',
-    'arrived': 'arrived_at_destination_port'
   };
-  
-  // Sort by date
-  timeline.sort((a, b) => {
-    const dateA = new Date(a.date || a.timestamp || a.createdAt || 0);
-    const dateB = new Date(b.date || b.timestamp || b.createdAt || 0);
-    return dateA - dateB;
-  });
-  
-  // Check if there's a resume after hold
-  let holdIndex = -1;
-  let resumeIndex = -1;
-  let restoredStatus = null;
-  
-  for (let i = 0; i < timeline.length; i++) {
-    const event = timeline[i];
-    const status = event.status?.toLowerCase() || '';
-    const description = event.description?.toLowerCase() || '';
+
+  const getTimelineOldToNew = () => {
+    if (!trackingData?.timeline) return [];
     
-    if (status === 'on_hold' || description.includes('on hold')) {
-      holdIndex = i;
-    }
-    if (event.isResumeEvent || description.includes('resumed')) {
-      resumeIndex = i;
-      if (event.restoredFromHold || event.displayStatus) {
-        restoredStatus = event.displayStatus || event.status;
-      }
-    }
-  }
-  
-  const hasResumeAfterHold = (holdIndex !== -1 && resumeIndex > holdIndex);
-  
-  let seenStatuses = new Set();
-  let filteredTimeline = [];
-  let hasOnHold = false;
-  let pendingEvent = null;
-  let hasAddedPending = false;
-  
-  for (const event of timeline) {
-    let status = event.displayStatus || event.status?.toLowerCase() || '';
-    const description = event.description?.toLowerCase() || '';
+    let timeline = [...trackingData.timeline];
     
-    // Skip resume events from display (they're just markers)
-    if (event.isResumeEvent) {
-      continue;
-    }
+    const HIDDEN_STATUSES = [
+      'inspected', 'damage_reported', 'damaged', 'in_progress',
+      'delivery_attempted', 'loaded', 'removed_from_queue', 'removed', 'queue_removed'
+    ];
     
-    if (HIDDEN_STATUSES.includes(status)) {
-      continue;
-    }
+    const STATUS_MAPPING = {
+      'in_progress': 'consolidating',
+      'loaded': 'loaded_in_container',
+      'pending_consolidation': 'pending_consolidation',
+      'arrived': 'arrived_at_destination_port'
+    };
     
-    if (description.includes('removed from consolidation') || 
-        description.includes('removed from queue')) {
-      continue;
-    }
-    
-    let mappedStatus = STATUS_MAPPING[status] || status;
-    
-    if (event.isHoldEvent) {
-      mappedStatus = 'on_hold';
-    }
-    
-    // Handle pending - store but don't add yet
-    if (mappedStatus === 'pending') {
-      if (!pendingEvent) {
-        pendingEvent = {
-          ...event,
-          mappedStatus: mappedStatus,
-          originalStatus: event.status,
-          isHoldEvent: false,
-          date: event.date || event.timestamp || event.createdAt || new Date().toISOString()
-        };
-      }
-      continue;
-    }
-    
-    // Handle On Hold - only show if not resumed
-    if (mappedStatus === 'on_hold') {
-      if (hasResumeAfterHold) {
-        continue; // Skip on hold if resumed
-      }
-      if (!hasOnHold) {
-        hasOnHold = true;
-        filteredTimeline.push({
-          ...event,
-          mappedStatus: mappedStatus,
-          originalStatus: event.status,
-          isHoldEvent: true
-        });
-      }
-      continue;
-    }
-    
-    // If this is a restored status, make sure it's correct
-    if (restoredStatus && mappedStatus === 'pending') {
-      continue; // Skip pending if we have restored status
-    }
-    
-    // Skip duplicate statuses
-    if (seenStatuses.has(mappedStatus) && 
-        !mappedStatus.includes('return') && 
-        !mappedStatus.includes('customs')) {
-      continue;
-    }
-    seenStatuses.add(mappedStatus);
-    
-    filteredTimeline.push({
-      ...event,
-      mappedStatus: mappedStatus,
-      originalStatus: event.status,
-      isHoldEvent: false
+    // Sort by date
+    timeline.sort((a, b) => {
+      const dateA = new Date(a.date || a.timestamp || a.createdAt || 0);
+      const dateB = new Date(b.date || b.timestamp || b.createdAt || 0);
+      return dateA - dateB;
     });
-  }
-  
-  // ALWAYS add pending at the beginning
-  if (pendingEvent) {
-    let earliestDate = new Date();
-    if (filteredTimeline.length > 0) {
-      const firstEventDate = filteredTimeline[0].date || filteredTimeline[0].timestamp || filteredTimeline[0].createdAt;
-      if (firstEventDate) {
-        earliestDate = new Date(firstEventDate);
+    
+    let seenStatuses = new Set();
+    let filteredTimeline = [];
+    let hasOnHold = false;
+    
+    for (const event of timeline) {
+      let status = event.displayStatus || event.status?.toLowerCase() || '';
+      const description = event.description?.toLowerCase() || '';
+      
+      if (event.isResumeEvent) {
+        continue;
       }
+      
+      if (HIDDEN_STATUSES.includes(status)) {
+        continue;
+      }
+      
+      if (description.includes('removed from consolidation') || 
+          description.includes('removed from queue')) {
+        continue;
+      }
+      
+      let mappedStatus = STATUS_MAPPING[status] || status;
+      
+      if (event.isHoldEvent) {
+        mappedStatus = 'on_hold';
+      }
+      
+      if (mappedStatus === 'on_hold') {
+        if (!hasOnHold) {
+          hasOnHold = true;
+          filteredTimeline.push({
+            ...event,
+            mappedStatus: mappedStatus,
+            originalStatus: event.status,
+            isHoldEvent: true
+          });
+        }
+        continue;
+      }
+      
+      if (seenStatuses.has(mappedStatus) && 
+          !mappedStatus.includes('return') && 
+          !mappedStatus.includes('customs') &&
+          mappedStatus !== 'under_customs_cleared') {
+        continue;
+      }
+      seenStatuses.add(mappedStatus);
+      
+      filteredTimeline.push({
+        ...event,
+        mappedStatus: mappedStatus,
+        originalStatus: event.status,
+        isHoldEvent: false
+      });
     }
     
-    const pendingDate = new Date(earliestDate);
-    pendingDate.setMinutes(pendingDate.getMinutes() - 1);
-    
-    filteredTimeline.unshift({
-      ...pendingEvent,
-      date: pendingDate.toISOString(),
-      timestamp: pendingDate.toISOString(),
-    });
-  }
-  
-  return filteredTimeline;
-};
+    return filteredTimeline;
+  };
   
   const getTimelineNewToOld = () => {
     const timeline = getTimelineOldToNew();
@@ -718,7 +720,6 @@ const getTimelineOldToNew = () => {
     
     const config = getStatusConfig(lastEvent.mappedStatus || lastEvent.status);
     
-    // Return completed should show 100%
     if (lastEvent.mappedStatus === 'return_completed' || lastEvent.status?.toLowerCase() === 'return_completed') {
       return 100;
     }
@@ -798,6 +799,7 @@ const getTimelineOldToNew = () => {
   const currentStatusConfig = getStatusConfig(trackingData?.status);
   const currentStage = getCurrentStage();
   const hasReturn = hasReturnStatus();
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/tracking-number?tracking=${trackingNumber}` : '';
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -813,25 +815,27 @@ const getTimelineOldToNew = () => {
 
       {/* Search Section */}
       <div className="max-w-3xl mx-auto px-4 -mt-8">
-        <form onSubmit={handleTrack} className="bg-white rounded-xl shadow-xl p-2 flex">
-          <div className="flex-1 flex items-center px-4">
-            <Search className="h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value.toUpperCase())}
-              placeholder="Enter tracking number (e.g., CLG-BC6944CD)"
-              className="w-full px-3 py-4 focus:outline-none"
+        <form onSubmit={handleTrack} className="bg-white rounded-xl shadow-xl p-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1 flex items-center px-4">
+              <Search className="h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value.toUpperCase())}
+                placeholder="Enter tracking number (e.g., CLG-BC6944CD)"
+                className="w-full px-3 py-4 focus:outline-none"
+                disabled={loading}
+              />
+            </div>
+            <button
+              type="submit"
               disabled={loading}
-            />
+              className="px-8 py-4 bg-[#E67E22] text-white rounded-lg hover:bg-[#d35400] disabled:bg-gray-300 font-medium min-w-[120px]"
+            >
+              {loading ? 'Searching...' : 'Track'}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-8 py-4 bg-[#E67E22] text-white rounded-lg hover:bg-[#d35400] disabled:bg-gray-300 font-medium min-w-[120px]"
-          >
-            {loading ? 'Searching...' : 'Track'}
-          </button>
         </form>
       </div>
 
@@ -850,6 +854,17 @@ const getTimelineOldToNew = () => {
 
         {trackingData && !error && (
           <div className="space-y-6">
+            {/* Share Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition"
+              >
+                <Share2 className="h-4 w-4" />
+                Share Tracking
+              </button>
+            </div>
+
             {/* ===== HEADER SECTION ===== */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -859,13 +874,22 @@ const getTimelineOldToNew = () => {
                     Booking: {trackingData.bookingNumber || 'N/A'} | Shipment: {trackingData.shipmentNumber || 'N/A'}
                   </p>
                 </div>
-                <span className={`px-4 py-2 rounded-full text-sm font-medium flex items-center ${currentStatusConfig.color}`}>
-                  <StatusIcon status={trackingData.status} />
-                  <span className="ml-2">{currentStatusConfig.label}</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-4 py-2 rounded-full text-sm font-medium flex items-center ${currentStatusConfig.color}`}>
+                    <StatusIcon status={trackingData.status} />
+                    <span className="ml-2">{currentStatusConfig.label}</span>
+                  </span>
+                  <button
+                    onClick={handleCopyShareLink}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition"
+                    title="Copy shareable link"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500" />
+                  </button>
+                </div>
               </div>
 
-              {/* ===== UPDATED PROGRESS BAR WITH RETURN STAGE ===== */}
+              {/* Progress Bar */}
               <div className="mb-4">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
                   <span className={currentStage === 'pending' ? 'font-bold text-orange-600' : ''}>Pending</span>
@@ -885,7 +909,6 @@ const getTimelineOldToNew = () => {
                     className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full transition-all duration-1000 ease-in-out"
                     style={{ width: `${calculateOverallProgress()}%` }}
                   />
-                  {/* Stage dividers */}
                   <div className="absolute top-0 left-[16.6%] h-full w-0.5 bg-white opacity-30" />
                   <div className="absolute top-0 left-[33.3%] h-full w-0.5 bg-white opacity-30" />
                   <div className="absolute top-0 left-[50%] h-full w-0.5 bg-white opacity-30" />
@@ -936,6 +959,7 @@ const getTimelineOldToNew = () => {
               </div>
             </div>
 
+            {/* Rest of your tabs and content remain the same */}
             {/* ===== TABS ===== */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="flex border-b overflow-x-auto">
@@ -1032,8 +1056,49 @@ const getTimelineOldToNew = () => {
                           const isHold = event.isHoldEvent === true;
                           const isReturn = displayStatus?.includes('return');
                           const isCustoms = displayStatus?.includes('customs');
-                          // For return completed, force 100% progress
+                          const isBookingRequest = displayStatus === 'booking_requested';
                           const displayProgress = displayStatus === 'return_completed' ? 100 : progress;
+                          
+                          // Special styling for booking requested
+                          if (isBookingRequest) {
+                            return (
+                              <div key={index} className="flex items-start gap-4 opacity-70">
+                                <div className="relative">
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
+                                    <Package className="h-5 w-5 text-gray-400" />
+                                  </div>
+                                  {index < timeline.length - 1 && (
+                                    <div className="absolute top-10 left-4 w-0.5 h-16 bg-gray-200" />
+                                  )}
+                                </div>
+                                
+                                <div className="flex-1 pb-6">
+                                  <div className="flex justify-between items-start flex-wrap gap-2">
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-gray-500">
+                                        Booking Requested
+                                      </p>
+                                      <p className="text-sm text-gray-400 mt-1 flex items-center gap-1">
+                                        <MapPin className="h-3 w-3 text-gray-400" />
+                                        System
+                                      </p>
+                                      {getEventDescription(event) && (
+                                        <p className="text-xs mt-1 p-2 rounded text-gray-400 bg-gray-50">
+                                          {getEventDescription(event)}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-gray-400 whitespace-nowrap">
+                                      {formatDate(event.date || event.timestamp || event.createdAt)}
+                                    </p>
+                                  </div>
+                                  <div className="mt-2 w-full max-w-xs h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-gray-300" style={{ width: '5%' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
                           
                           return (
                             <div key={index} className="flex items-start gap-4">
@@ -1041,7 +1106,7 @@ const getTimelineOldToNew = () => {
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                                 isCurrentStep 
                                   ? isReturn ? 'bg-purple-100 border-2 border-purple-500' 
-                                    : isCustoms ? 'bg-blue-100 border-2 border-blue-500'  // ← customs এর জন্য
+                                    : isCustoms ? 'bg-blue-100 border-2 border-blue-500'
                                     : 'bg-orange-100 border-2 border-orange-500'
                                   : isCompleted 
                                     ? 'bg-green-100' 
@@ -1124,7 +1189,7 @@ const getTimelineOldToNew = () => {
                                   </div>
                                   
                                   <p className="text-xs text-gray-400 whitespace-nowrap">
-                                    {event.formattedDate || formatDate(event.date || event.timestamp || event.createdAt)}
+                                    {formatDate(event.date || event.timestamp || event.createdAt)}
                                   </p>
                                 </div>
                                 
@@ -1239,7 +1304,7 @@ const getTimelineOldToNew = () => {
                     </div>
 
                     {trackingData.consolidation && (
-                     <div className="md:col-span-2">
+                     <div className="md:col-span-2 mt-6">
                         <h3 className="font-medium mb-3 flex items-center">
                           <Layers className="h-4 w-4 text-orange-500 mr-2" />
                           Consolidation Information
