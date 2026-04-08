@@ -110,7 +110,7 @@ export default function RequestQuote() {
       const loadingToast = toast.loading('Sending quote request...');
       
       try {
-        const response = await fetch('https://b2b-cargo-server-1.onrender.com/api/v1/request-quote', {
+        const response = await fetch('https://b2-b-cargo-server-qvp1.vercel.app/api/v1/request-quote', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

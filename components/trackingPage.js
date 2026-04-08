@@ -1401,7 +1401,7 @@ export default function TrackingPage() {
             </div>
 
             {/* PDF Download Button */}
-            <div className="flex justify-end">
+            {/* <div className="flex justify-end">
               <PDFDownloadLink
                 document={<TrackingPDF data={trackingData} />}
                 fileName={`tracking-${trackingData?.trackingNumber || 'shipment'}.pdf`}
@@ -1414,7 +1414,7 @@ export default function TrackingPage() {
                   </>
                 )}
               </PDFDownloadLink>
-            </div>
+            </div> */}
           </div>
         )}
       </div>

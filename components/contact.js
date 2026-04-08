@@ -74,7 +74,7 @@ function Contact() {
     const loadingToast = toast.loading('Sending message...');
 
     try {
-      const response = await fetch('https://b2b-cargo-server-1.onrender.com/api/v1/contact', {
+      const response = await fetch('https://b2-b-cargo-server-qvp1.vercel.app/api/v1/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

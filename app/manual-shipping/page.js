@@ -256,6 +256,7 @@ const SHIPMENT_MODE_CONFIG = {
 };
 
 // ==================== BUTTON COMPONENT ====================
+// ==================== BUTTON COMPONENT (FIXED) ====================
 const Button = ({ 
   children, 
   variant = 'primary', 
@@ -267,12 +268,12 @@ const Button = ({
   disabled 
 }) => {
   const variants = {
-    primary: `bg-[${COLORS.primary}] text-white hover:bg-[#d35400]`,
-    secondary: `bg-[${COLORS.secondary}] text-white hover:bg-[#2c5a8c]`,
-    outline: `border-2 border-[${COLORS.primary}] text-[${COLORS.primary}] hover:bg-[#fef2e6]`,
+    primary: 'bg-orange-500 text-white hover:bg-orange-600',
+    secondary: 'bg-blue-600 text-white hover:bg-blue-700',
+    outline: 'border-2 border-orange-500 text-orange-500 hover:bg-orange-50',
     ghost: 'text-gray-600 hover:bg-gray-100',
-    success: `bg-[${COLORS.success}] text-white hover:bg-[#0d9488]`,
-    danger: `bg-[${COLORS.danger}] text-white hover:bg-[#dc2626]`,
+    success: 'bg-green-500 text-white hover:bg-green-600',
+    danger: 'bg-red-500 text-white hover:bg-red-600',
     light: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
   };
 
@@ -289,7 +290,7 @@ const Button = ({
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className={`rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center ${variants[variant]} ${sizes[size]} ${className} ${disabled || isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 inline-flex items-center justify-center ${variants[variant]} ${sizes[size]} ${className} ${disabled || isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {isLoading ? (
         <>
@@ -442,6 +443,7 @@ const StatCard = ({ title, value, icon: Icon, color, onClick, active }) => (
 );
 
 // ==================== ACTION MENU ====================
+// ==================== ACTION MENU (FIXED - CORRECT RETURN CHECK FOR BOTH APIS) ====================
 const ActionMenu = ({ shipment, onAction, source = 'first' }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = React.useRef(null);
@@ -454,38 +456,137 @@ const ActionMenu = ({ shipment, onAction, source = 'first' }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // For second API shipments, check if return can be requested based on status
-  const canReturn = source === 'first' 
-    ? canRequestReturn(shipment)
-    : shipment.shipmentStatus === 'delivered';
+  // ✅ সঠিক return eligibility চেক
+  const canReturn = () => {
+    if (source === 'first') {
+      // First API check
+      const status = shipment.status;
+      const eligibleStatuses = ['delivered', 'completed'];
+      const isEligible = eligibleStatuses.includes(status);
+      
+      // ✅ Check if return request exists and is NOT 'none'
+      let hasReturnRequest = false;
+      if (shipment.returnRequest) {
+        const returnStatus = shipment.returnRequest.status;
+        // Only consider as active return if status is not 'none' or not rejected/completed
+        hasReturnRequest = returnStatus && 
+          returnStatus !== 'none' && 
+          returnStatus !== 'rejected' && 
+          returnStatus !== 'rejected_by_admin' &&
+          returnStatus !== 'completed';
+      }
+      
+      console.log(`🔍 First API Return Check - ${shipment.shipmentNumber}:`, {
+        status,
+        isEligible,
+        hasReturnRequest,
+        returnRequestData: shipment.returnRequest,
+        canReturn: isEligible && !hasReturnRequest
+      });
+      
+      return isEligible && !hasReturnRequest;
+    } 
     
-  const hasReturnRequest = source === 'first' 
-    ? (shipment.returnRequest && shipment.returnRequest.status !== 'none')
-    : (shipment.returnRequest);
+    // Second API check
+    const status = shipment.shipmentStatus;
+    const isEligible = status === 'delivered';
+    
+    let hasReturnRequest = false;
+    if (shipment.returnRequest) {
+      const returnStatus = shipment.returnRequest.status;
+      hasReturnRequest = returnStatus && 
+        returnStatus !== 'none' && 
+        returnStatus !== 'rejected' && 
+        returnStatus !== 'rejected_by_admin' &&
+        returnStatus !== 'completed';
+    }
+    
+    console.log(`🔍 Second API Return Check - ${shipment.shipmentNumber}:`, {
+      status,
+      isEligible,
+      hasReturnRequest,
+      returnRequestData: shipment.returnRequest,
+      canReturn: isEligible && !hasReturnRequest
+    });
+    
+    return isEligible && !hasReturnRequest;
+  };
+  
+  // ✅ Check for active return request to show status
+  const hasActiveReturnRequest = () => {
+    if (source === 'first') {
+      if (!shipment.returnRequest) return false;
+      const returnStatus = shipment.returnRequest.status;
+      return returnStatus && 
+        returnStatus !== 'none' && 
+        returnStatus !== 'rejected' && 
+        returnStatus !== 'rejected_by_admin' &&
+        returnStatus !== 'completed';
+    } else {
+      if (!shipment.returnRequest) return false;
+      const returnStatus = shipment.returnRequest.status;
+      return returnStatus && 
+        returnStatus !== 'none' && 
+        returnStatus !== 'rejected' && 
+        returnStatus !== 'rejected_by_admin' &&
+        returnStatus !== 'completed';
+    }
+  };
+
+  const getReturnStatus = () => {
+    return shipment.returnRequest?.status;
+  };
 
   const actions = [
     { label: 'View Details', icon: Eye, action: 'view', color: 'text-blue-600' },
     { label: 'Track Shipment', icon: Navigation, action: 'track', color: 'text-green-600' },
   ];
 
-  if (canReturn && !hasReturnRequest) {
+  // ✅ Only add return option if eligible
+  if (canReturn()) {
     actions.push({ label: 'Request Return', icon: Undo2, action: 'return', color: 'text-orange-600' });
   }
 
-  if (hasReturnRequest) {
-    const returnStatus = shipment.returnRequest?.status;
+  // ✅ Only show return status if there's an ACTIVE return request
+  if (hasActiveReturnRequest()) {
+    const returnStatus = getReturnStatus();
     let returnLabel = 'Return Request';
-    if (returnStatus === 'pending') returnLabel = 'Return Pending';
-    else if (returnStatus === 'approved') returnLabel = 'Return Approved';
-    else if (returnStatus === 'completed') returnLabel = 'Return Completed';
-    else if (returnStatus === 'rejected') returnLabel = 'Return Rejected';
+    let returnColor = 'text-orange-600';
+    
+    if (returnStatus === 'pending') {
+      returnLabel = 'Return Pending';
+      returnColor = 'text-yellow-600';
+    } else if (returnStatus === 'approved') {
+      returnLabel = 'Return Approved';
+      returnColor = 'text-green-600';
+    } else if (returnStatus === 'completed') {
+      returnLabel = 'Return Completed';
+      returnColor = 'text-emerald-600';
+    } else if (returnStatus === 'rejected' || returnStatus === 'rejected_by_admin') {
+      returnLabel = 'Return Rejected';
+      returnColor = 'text-red-600';
+    } else if (returnStatus === 'rejected_by_customer') {
+      returnLabel = 'Return Cancelled';
+      returnColor = 'text-red-600';
+    }
     
     actions.push({ 
       label: returnLabel, 
       icon: returnStatus === 'approved' ? ThumbsUp : returnStatus === 'rejected' ? ThumbsDown : Undo2, 
       action: 'viewReturn', 
-      color: returnStatus === 'approved' ? 'text-green-600' : returnStatus === 'rejected' ? 'text-red-600' : 'text-orange-600' 
+      color: returnColor
     });
+  }
+
+  // Don't show menu if no actions
+  if (actions.length === 0) {
+    return (
+      <div className="relative">
+        <button disabled className="p-2 opacity-50 cursor-not-allowed">
+          <MoreVertical className="h-4 w-4 text-gray-300" />
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -496,7 +597,14 @@ const ActionMenu = ({ shipment, onAction, source = 'first' }) => {
       {showMenu && (
         <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-200 z-50 py-1">
           {actions.map(action => (
-            <button key={action.action} onClick={() => { onAction(action.action, shipment, source); setShowMenu(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center">
+            <button 
+              key={action.action} 
+              onClick={() => { 
+                onAction(action.action, shipment, source); 
+                setShowMenu(false); 
+              }} 
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+            >
               <action.icon className={`h-4 w-4 mr-3 ${action.color}`} />
               <span className="text-gray-700">{action.label}</span>
             </button>
@@ -537,6 +645,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
 };
 
 // ==================== RETURN REQUEST MODAL ====================
+// ==================== RETURN REQUEST MODAL (UPDATED FOR BOTH APIS) ====================
 const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess, source = 'first' }) => {
   const [formData, setFormData] = useState({
     reason: '',
@@ -562,6 +671,7 @@ const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess, source = 'fi
       if (source === 'first') {
         packages = shipment.packages || [];
       } else {
+        // ✅ Second API এর জন্য packageDetails চেক করুন
         packages = shipment.shipmentDetails?.packageDetails || [];
       }
       
@@ -630,11 +740,25 @@ const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess, source = 'fi
 
     setLoading(true);
     try {
-      const result = await requestReturn(shipment._id, {
-        reason: formData.reason,
-        description: formData.description,
-        items: formData.items
-      });
+      let result;
+      
+      // ✅ উভয় API এর জন্য return request সাবমিট
+      if (source === 'first') {
+        result = await requestReturn(shipment._id, {
+          reason: formData.reason,
+          description: formData.description,
+          items: formData.items
+        });
+      } else {
+        // ✅ Second API এর জন্য আলাদা এন্ডপয়েন্ট বা প্যারামিটার
+        // আপনার API অনুযায়ী এখানে কল করুন
+        result = await requestReturn(shipment._id, {
+          reason: formData.reason,
+          description: formData.description,
+          items: formData.items,
+          source: 'new_shipping' //如果需要区分来源
+        });
+      }
 
       if (result.success) {
         toast.success(result.message || 'Return request submitted successfully');
@@ -644,18 +768,43 @@ const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess, source = 'fi
         toast.error(result.message || 'Failed to submit return request');
       }
     } catch (error) {
+      console.error('Return request error:', error);
       toast.error('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !shipment) return null;
 
   const selectedReason = returnReasons.find(r => r.value === formData.reason);
   const shipmentNumber = source === 'first' 
     ? (shipment?.shipmentNumber || shipment?._id?.slice(-8))
     : (shipment?.shipmentNumber || shipment?._id?.slice(-8));
+
+  // ✅ Check if shipment is eligible for return (delivered status)
+  const isDelivered = source === 'first' 
+    ? shipment.status === 'delivered'
+    : shipment.shipmentStatus === 'delivered';
+
+  if (!isDelivered) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Return Request" size="md">
+        <div className="text-center py-8">
+          <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-3" />
+          <p className="text-gray-700 font-medium">Return Not Available</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Returns can only be requested for delivered shipments.
+            <br />
+            Current status: <span className="font-semibold">{shipment.shipmentStatus || shipment.status}</span>
+          </p>
+        </div>
+        <div className="flex justify-end pt-4">
+          <Button variant="primary" onClick={onClose}>Close</Button>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Request Return" size="md">
@@ -672,7 +821,7 @@ const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess, source = 'fi
             Shipment #{shipmentNumber}
           </label>
           <p className="text-xs text-gray-500">
-            Delivered on: {formatShipmentDate(shipment?.deliveredAt || shipment?.updatedAt, 'short')}
+            Status: <span className="font-semibold">{shipment.shipmentStatus || shipment.status}</span>
           </p>
         </div>
 
@@ -740,6 +889,7 @@ const ReturnRequestModal = ({ isOpen, onClose, shipment, onSuccess, source = 'fi
 };
 
 // ==================== RETURN STATUS MODAL ====================
+// ==================== RETURN STATUS MODAL (UPDATED FOR BOTH APIS) ====================
 const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
   const [returnStatus, setReturnStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -758,12 +908,20 @@ const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
   const fetchReturnStatus = async () => {
     setLoading(true);
     try {
+      // ✅ উভয় API এর জন্য return status fetch করুন
       const result = await getReturnRequestStatus(shipment._id);
       if (result.success) {
         setReturnStatus(result.data);
+      } else if (shipment.returnRequest) {
+        // ✅ যদি API থেকে না আসে, তাহলে shipment থেকে দেখান
+        setReturnStatus({ returnRequest: shipment.returnRequest });
       }
     } catch (error) {
       console.error('Failed to fetch return status:', error);
+      // ✅ Fallback: shipment থেকে returnRequest দেখান
+      if (shipment.returnRequest) {
+        setReturnStatus({ returnRequest: shipment.returnRequest });
+      }
     } finally {
       setLoading(false);
     }
@@ -822,19 +980,27 @@ const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
 
   if (!isOpen) return null;
 
+  // ✅ Check if return request exists
   const returnRequest = returnStatus?.returnRequest || shipment?.returnRequest;
   
-  if (!returnRequest || returnRequest.status === 'none') {
+  if (!returnRequest || !returnRequest.status || returnRequest.status === 'none') {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Return Status" size="sm">
         <div className="text-center py-8">
           <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-500">No return request found for this shipment.</p>
+          <p className="text-xs text-gray-400 mt-2">
+            Shipment ID: {shipment?.shipmentNumber || shipment?._id?.slice(-8)}
+          </p>
+        </div>
+        <div className="flex justify-end pt-4">
+          <Button variant="primary" onClick={onClose}>Close</Button>
         </div>
       </Modal>
     );
   }
 
+  // Rest of the component remains the same...
   const returnCost = returnRequest.returnCost || 0;
   const isFreeReturn = returnRequest.isFreeReturn || false;
   const costBreakdown = returnRequest.returnCostBreakdown;
@@ -907,18 +1073,6 @@ const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
                 <p className="text-xs text-gray-500">Description</p>
                 <p className="text-sm text-gray-600">{returnRequest.description}</p>
               </div>
-              {returnRequest.returnTrackingNumber && (
-                <div>
-                  <p className="text-xs text-gray-500">Return Tracking Number</p>
-                  <p className="text-sm font-medium">{returnRequest.returnTrackingNumber}</p>
-                </div>
-              )}
-              {returnRequest.returnNotes && (
-                <div>
-                  <p className="text-xs text-gray-500">Admin Notes</p>
-                  <p className="text-sm text-gray-600">{returnRequest.returnNotes}</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -936,39 +1090,12 @@ const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {costBreakdown && (
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Shipping Cost:</span>
-                          <span className="font-medium">${costBreakdown.shippingCost || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Handling Fee:</span>
-                          <span className="font-medium">${costBreakdown.handlingFee || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Restocking Fee:</span>
-                          <span className="font-medium">${costBreakdown.restockingFee || 0}</span>
-                        </div>
-                        <div className="border-t pt-2 mt-2">
-                          <div className="flex justify-between font-semibold">
-                            <span>Total Return Cost:</span>
-                            <span style={{ color: COLORS.primary }}>${returnCost} USD</span>
-                          </div>
-                        </div>
-                        {costBreakdown.note && (
-                          <p className="text-xs text-gray-500 mt-2">{costBreakdown.note}</p>
-                        )}
-                      </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex justify-between font-semibold">
+                      <span>Total Return Cost:</span>
+                      <span style={{ color: COLORS.primary }}>${returnCost} USD</span>
                     </div>
-                  )}
-                  
-                  {!costBreakdown && (
-                    <div className="bg-blue-50 p-3 rounded-lg text-center">
-                      <p className="text-blue-700 font-semibold">Total Return Cost: ${returnCost} USD</p>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -993,18 +1120,13 @@ const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
             </div>
           )}
 
-          {returnRequest.status !== 'approved' && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">{config.description}</p>
-            </div>
-          )}
-
           <div className="flex justify-end">
             <Button variant="primary" onClick={onClose}>Close</Button>
           </div>
         </div>
       </Modal>
 
+      {/* Confirm and Reject Dialogs remain the same */}
       {showConfirmDialog && (
         <Modal isOpen={showConfirmDialog} onClose={() => setShowConfirmDialog(false)} title="Confirm Return" size="sm">
           <div className="space-y-4">
@@ -1047,7 +1169,7 @@ const ReturnStatusModal = ({ isOpen, onClose, shipment, onSuccess }) => {
                     Are you sure you want to cancel this return?
                   </p>
                   <p className="text-xs text-red-700 mt-1">
-                    This action cannot be undone. You will need to submit a new return request if you change your mind.
+                    This action cannot be undone.
                   </p>
                 </div>
               </div>
@@ -1903,9 +2025,15 @@ export default function ShipmentsPage() {
         progress = getSecondApiProgress(status);
       }
       
-      const hasReturnRequest = source === 'first' 
-        ? (shipment.returnRequest && shipment.returnRequest.status !== 'none')
-        : (shipment.returnRequest);
+      const hasReturnRequest = (() => {
+  if (!shipment.returnRequest) return false;
+  const returnStatus = shipment.returnRequest.status;
+  return returnStatus && 
+    returnStatus !== 'none' && 
+    returnStatus !== 'rejected' && 
+    returnStatus !== 'rejected_by_admin' &&
+    returnStatus !== 'completed';
+})();
       
       let packages = [];
       let totalWeight = 0;
@@ -1944,20 +2072,29 @@ export default function ShipmentsPage() {
                     {shipment.shipmentDetails?.shippingMode || 'Standard'}
                   </span>
                 </div>
-              )}
-              {hasReturnRequest && source === 'first' && (
-                <div className="text-xs mt-1">
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs ${
-                    shipment.returnRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    shipment.returnRequest.status === 'approved' ? 'bg-green-100 text-green-700' :
-                    shipment.returnRequest.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    <Undo2 className="h-2.5 w-2.5 mr-1" />
-                    Return {shipment.returnRequest.status}
-                  </span>
-                </div>
-              )}
+              )} 
+
+
+              
+{hasReturnRequest && (
+  <div className="text-xs mt-1">
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs ${
+      shipment.returnRequest?.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+      shipment.returnRequest?.status === 'approved' ? 'bg-green-100 text-green-700' :
+      shipment.returnRequest?.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+      shipment.returnRequest?.status === 'rejected' || shipment.returnRequest?.status === 'rejected_by_admin' ? 'bg-red-100 text-red-700' :
+      shipment.returnRequest?.status === 'rejected_by_customer' ? 'bg-orange-100 text-orange-700' :
+      'bg-gray-100 text-gray-700'
+    }`}>
+      <Undo2 className="h-2.5 w-2.5 mr-1" />
+      Return {shipment.returnRequest?.status === 'pending' ? 'Pending' :
+              shipment.returnRequest?.status === 'approved' ? 'Approved' :
+              shipment.returnRequest?.status === 'completed' ? 'Completed' :
+              shipment.returnRequest?.status === 'rejected' || shipment.returnRequest?.status === 'rejected_by_admin' ? 'Rejected' :
+              shipment.returnRequest?.status === 'rejected_by_customer' ? 'Cancelled' : ''}
+    </span>
+  </div>
+)}
             </div>
           </td>
           <td className="px-4 py-3">

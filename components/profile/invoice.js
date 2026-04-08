@@ -124,14 +124,8 @@ const InvoicePDF = ({ invoice, companyInfo }) => {
           <View style={pdfStyles.invoiceSection}>
             <Text style={pdfStyles.invoiceTitle}>INVOICE</Text>
             <Text style={pdfStyles.invoiceDetails}>#{invoice.invoiceNumber}</Text>
-            <Text style={pdfStyles.invoiceDetails}>Date: {formatDatePDF(invoice.invoiceDate)}</Text>
-            <Text style={pdfStyles.invoiceDetails}>Due Date: {formatDatePDF(invoice.dueDate)}</Text>
           </View>
-        </View>
-
-        <View style={[pdfStyles.status, getStatusStylePDF(invoice.paymentStatus)]}>
-          <Text>{getStatusTextPDF(invoice.paymentStatus)}</Text>
-        </View>
+        </View> 
 
         <View style={pdfStyles.section}>
           <Text style={pdfStyles.sectionTitle}>BILL TO</Text>
@@ -193,13 +187,13 @@ const InvoicePDF = ({ invoice, companyInfo }) => {
     </Document>
   );
 };
-
+ 
 const COMPANY_INFO = {
   name: 'B2B Logistics Group',
-  address: '123 Business Avenue, Commercial Area',
-  city: 'Dhaka, Bangladesh 1212',
-  phone: '+880 1234-567890',
-  email: 'info@b2blogistics.com'
+  address: '8825 STANFORD BLVD, SUITE 306, COLUMBIA, MD 21045, USA',
+  city: 'USA',
+  phone: '+1-647-362-7735',
+  email: 'nfo@cargologisticscompany.com'
 };
  
 
