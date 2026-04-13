@@ -920,12 +920,13 @@ export default function CreateBooking() {
 
   // ==================== SUBMIT HANDLER ====================
   
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
   e.preventDefault();
   
   console.log('🔍 ========== SUBMIT STARTED ==========');
   console.log('Current Step:', currentStep);
   console.log('Is Review Confirmed:', isReviewConfirmed);
+  console.log('Pickup Required:', pickupRequired);
   
   if (currentStep !== 4) {
     toast.info('📋 Please complete all steps first');
@@ -939,17 +940,278 @@ const handleSubmit = async (e) => {
   
   if (!loggedInUser || !loggedInUser._id) {
     toast.error('👤 User not logged in. Please login again.');
+    setTimeout(() => {
+      router.push('/auth/login');
+    }, 1500);
     return;
   }
 
-  // সব validation পাস করলে success দেখান (API call ছাড়া)
-  console.log('✅ All validations passed!');
-  toast.success('🎉 Validation passed! Redirecting...');
-  setShowSuccess(true);
-  setTimeout(() => {
-    router.push('/Bookings/my_bookings');
-  }, 2000);
-  return;
+  if (!formData.receiver.address.country) {
+    toast.error('🌍 Please select receiver country');
+    setCurrentStep(3);
+    return;
+  }
+  if (!formData.receiver.address.state) {
+    toast.error('🗺️ Please select receiver state');
+    setCurrentStep(3);
+    return;
+  }
+  if (!formData.receiver.address.city) {
+    toast.error('🏙️ Please select receiver city');
+    setCurrentStep(3);
+    return;
+  }
+
+  if (pickupRequired && !formData.sender.pickupDate) {
+    toast.error('🚚 Pickup date is required (Pickup Required is checked)');
+    setCurrentStep(3);
+    return;
+  }
+
+  if (formData.shipmentDetails.packageDetails.length === 0) {
+    toast.error('📦 Please add at least one package');
+    setCurrentStep(2);
+    return;
+  }
+
+  let hasInvalidPackage = false;
+  for (let i = 0; i < formData.shipmentDetails.packageDetails.length; i++) {
+    const pkg = formData.shipmentDetails.packageDetails[i];
+    if (!pkg.description) {
+      toast.error(`📦 Package ${i + 1}: Description is required`);
+      setCurrentStep(2);
+      hasInvalidPackage = true;
+      break;
+    }
+    if (!pkg.quantity || pkg.quantity < 1) {
+      toast.error(`📦 Package ${i + 1}: Quantity must be at least 1`);
+      setCurrentStep(2);
+      hasInvalidPackage = true;
+      break;
+    }
+    if (!pkg.weight || pkg.weight <= 0) {
+      toast.error(`⚖️ Package ${i + 1}: Weight is required`);
+      setCurrentStep(2);
+      hasInvalidPackage = true;
+      break;
+    }
+  }
+  if (hasInvalidPackage) return;
+  
+  if (!validateStep(3) || !validateStep(2) || !validateStep(1)) {
+    toast.error('❌ Please complete all required fields');
+    setCurrentStep(1);
+    return;
+  }
+  
+  const loadingToast = toast.loading('🚀 Creating booking... Please wait');
+  
+  setIsSubmitting(true);
+  setServerErrors([]);
+
+  try {
+    const bookingData = {
+      customer: loggedInUser._id,
+      createdBy: loggedInUser._id,
+      pickupRequired: pickupRequired,
+      
+      shipmentClassification: {
+        mainType: formData.shipmentClassification.mainType,
+        subType: formData.shipmentClassification.subType
+      },
+      
+      serviceType: formData.serviceType,
+      
+      shipmentDetails: {
+        origin: formData.shipmentDetails.origin,
+        destination: formData.shipmentDetails.destination,
+        shippingMode: formData.shipmentDetails.shippingMode,
+        packageDetails: formData.shipmentDetails.packageDetails.map(pkg => ({
+          description: pkg.description,
+          packagingType: pkg.packagingType,
+          quantity: Number(pkg.quantity),
+          weight: Number(pkg.weight),
+          volume: Number(pkg.volume),
+          dimensions: {
+            length: Number(pkg.dimensions.length) || 0,
+            width: Number(pkg.dimensions.width) || 0,
+            height: Number(pkg.dimensions.height) || 0,
+            unit: 'cm'
+          },
+          productCategory: pkg.productCategory || '',
+          hsCode: pkg.hsCode || '',
+          value: {
+            amount: Number(pkg.value.amount) || 0,
+            currency: formData.payment.currency || 'USD'
+          },
+          hazardous: pkg.hazardous || false
+        })),
+        specialInstructions: formData.shipmentDetails.specialInstructions || '',
+        referenceNumber: formData.customerReference || ''
+      },
+      
+      payment: {
+        mode: formData.payment.mode,
+        currency: formData.payment.currency || 'USD'
+      },
+      
+      sender: {
+        name: formData.sender.name,
+        companyName: formData.sender.companyName || '',
+        email: formData.sender.email,
+        phone: formData.sender.phone,
+        address: {
+          addressLine1: formData.sender.address.addressLine1 || '',
+          addressLine2: formData.sender.address.addressLine2 || '',
+          city: formData.sender.address.city || '',
+          state: formData.sender.address.state || '',
+          country: formData.sender.address.country || '',
+          postalCode: formData.sender.address.postalCode || ''
+        },
+        pickupDate: pickupRequired ? formData.sender.pickupDate : null,
+        pickupInstructions: pickupRequired ? formData.sender.pickupInstructions || '' : ''
+      },
+      
+      receiver: {
+        name: formData.receiver.name,
+        companyName: formData.receiver.companyName || '',
+        email: formData.receiver.email,
+        phone: formData.receiver.phone,
+        address: {
+          addressLine1: formData.receiver.address.addressLine1,
+          addressLine2: formData.receiver.address.addressLine2 || '',
+          city: formData.receiver.address.city,
+          state: formData.receiver.address.state,
+          country: formData.receiver.address.country,
+          postalCode: formData.receiver.address.postalCode || ''
+        },
+        deliveryInstructions: formData.receiver.deliveryInstructions || '',
+        isResidential: formData.receiver.isResidential || false
+      },
+      
+      courier: {
+        company: 'Cargo Logistics Group',
+        serviceType: formData.serviceType
+      },
+      
+      status: 'booking_requested',
+      pricingStatus: 'pending',
+      
+      timeline: [{
+        status: 'booking_requested',
+        description: 'Booking created',
+        updatedBy: loggedInUser._id,
+        timestamp: new Date()
+      }]
+    };
+
+    console.log('📤 Sending booking data:', JSON.stringify(bookingData, null, 2));
+
+    const response = await createBooking(bookingData);
+    
+    toast.dismiss(loadingToast);
+    
+    console.log('✅ Response:', response);
+    
+    if (response.success) {
+      toast.success('🎉 Booking created successfully! Redirecting...');
+      setShowSuccess(true);
+      setTimeout(() => {
+        router.push('/Bookings/my_bookings');
+      }, 2000);
+    } else {
+      let errorMsg = response.message || 'Failed to create booking';
+      
+      if (errorMsg.toLowerCase().includes('customer')) {
+        errorMsg = '👤 Invalid customer information. Please try again.';
+      } else if (errorMsg.toLowerCase().includes('package')) {
+        errorMsg = '📦 Package information is incomplete. Please check all package fields.';
+      } else if (errorMsg.toLowerCase().includes('address')) {
+        errorMsg = '📍 Address information is incomplete. Please check receiver address.';
+      } else if (errorMsg.toLowerCase().includes('date')) {
+        errorMsg = '📅 Date information is invalid. Please check departure and arrival dates.';
+      } else if (errorMsg.toLowerCase().includes('email')) {
+        errorMsg = '📧 Invalid email address. Please check sender and receiver emails.';
+      } else {
+        errorMsg = `❌ ${errorMsg}`;
+      }
+      
+      toast.error(errorMsg);
+      setServerErrors([{ msg: response.message || 'Failed to create booking' }]);
+    }
+  } catch (error) {
+    toast.dismiss(loadingToast);
+    
+    console.error('❌ ========== ERROR DETAILS ==========');
+    console.error('Error:', error);
+    console.error('Error Response:', error.response);
+    console.error('Error Data:', error.response?.data);
+    console.error('Error Status:', error.response?.status);
+    
+    let errorMessage = 'Network error. Please try again.';
+    
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      } else if (error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response.data.msg) {
+        errorMessage = error.response.data.msg;
+      } else if (Array.isArray(error.response.data)) {
+        errorMessage = error.response.data.map(e => e.msg || e.message).join(', ');
+      } else {
+        errorMessage = JSON.stringify(error.response.data);
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    let friendlyMessage = '';
+    
+    if (errorMessage.toLowerCase().includes('customer')) {
+      friendlyMessage = '👤 Customer information is invalid. Please reselect customer.';
+    } else if (errorMessage.toLowerCase().includes('package')) {
+      friendlyMessage = '📦 Package details are incomplete. Please check all package fields.';
+    } else if (errorMessage.toLowerCase().includes('address')) {
+      friendlyMessage = '📍 Address information is incomplete. Please check receiver address.';
+    } else if (errorMessage.toLowerCase().includes('date')) {
+      friendlyMessage = '📅 Date information is invalid. Please check departure and arrival dates.';
+    } else if (errorMessage.toLowerCase().includes('email')) {
+      friendlyMessage = '📧 Email address is invalid. Please check sender and receiver emails.';
+    } else if (errorMessage.toLowerCase().includes('state')) {
+      friendlyMessage = '🗺️ State is required. Please select a state for the receiver.';
+    } else if (errorMessage.toLowerCase().includes('city')) {
+      friendlyMessage = '🏙️ City is required. Please select a city for the receiver.';
+    } else if (errorMessage.toLowerCase().includes('country')) {
+      friendlyMessage = '🌍 Country is required. Please select a country for the receiver.';
+    } else if (errorMessage.toLowerCase().includes('weight')) {
+      friendlyMessage = '⚖️ Package weight is required. Please add weight for all packages.';
+    } else if (errorMessage.toLowerCase().includes('quantity')) {
+      friendlyMessage = '📦 Package quantity is required. Please add quantity for all packages.';
+    } else if (errorMessage.toLowerCase().includes('description')) {
+      friendlyMessage = '📝 Package description is required. Please add description for all packages.';
+    } else if (errorMessage.toLowerCase().includes('pickup')) {
+      friendlyMessage = '🚚 Pickup information is incomplete. Please check pickup details.';
+    } else if (errorMessage.toLowerCase().includes('validation')) {
+      friendlyMessage = '⚠️ Validation error. Please check all fields and try again.';
+    } else if (errorMessage.toLowerCase().includes('500') || errorMessage.toLowerCase().includes('server')) {
+      friendlyMessage = '🔧 Server error. Please try again later or contact support.';
+    } else if (errorMessage.toLowerCase().includes('401') || errorMessage.toLowerCase().includes('unauthorized')) {
+      friendlyMessage = '🔒 Session expired. Please login again.';
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 2000);
+    } else {
+      friendlyMessage = `❌ ${errorMessage}`;
+    }
+    
+    toast.error(friendlyMessage);
+    setServerErrors([{ msg: errorMessage }]);
+  } finally {
+    setIsSubmitting(false);
+  }
 };
 
   // ==================== RENDER ====================

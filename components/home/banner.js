@@ -219,7 +219,7 @@ const Banner = () => {
                 {activeContent.features.map((feature, index) => (
                   <div 
                     key={index} 
-                    className="flex items-center space-x-3 p-3 rounded-xl hover:bg-white hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group cursor-pointer"
+                    className="flex items-center space-x-3 p-3 rounded-xl hover:bg-white hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group"
                   >
                     <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary transition-all duration-300">
                       <div className="text-primary group-hover:text-white transition-colors">
